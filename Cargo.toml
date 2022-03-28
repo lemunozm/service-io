@@ -4,6 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1", features = ["rt", "macros", "sync", "time", "io-std", "io-util"] }
+tokio = { version = "1", features = ["rt", "macros", "sync", "time", "io-std", "io-util", "rt-multi-thread"] }
 async-trait = "0.1"
 whoami = "1.2.1"
+imap = "2.4"
+native-tls = "0.2.8"
+mailparse = "0.13"
+log = "0.4"
+lettre = "0.10.0-rc.4"
+
+[dev-dependencies]
+clap = { version = "3.1", features = ["derive", "cargo"] }
