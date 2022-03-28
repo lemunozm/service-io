@@ -111,42 +111,24 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::Echo;
 
-    use async_trait::async_trait;
+    use tokio::time::timeout;
 
-    #[async_trait]
-    impl InputConnector for mpsc::Receiver<Message> {
-        async fn run(mut self: Box<Self>, sender: mpsc::Sender<Message>) {
-            loop {
-                let message = self.recv().await.unwrap();
-                sender.send(message).await.unwrap()
-            }
-        }
-    }
+    use std::time::Duration;
 
-    #[async_trait]
-    impl OutputConnector for mpsc::Sender<Message> {
-        async fn run(self: Box<Self>, mut receiver: mpsc::Receiver<Message>) {
-            loop {
-                let message = receiver.recv().await.unwrap();
-                self.send(message).await.unwrap()
-            }
-        }
-    }
-
-    struct Echo;
-
-    #[async_trait]
-    impl Service for Echo {
-        async fn run(
-            self: Box<Self>,
-            mut input: mpsc::Receiver<Message>,
-            output: mpsc::Sender<Message>,
-        ) {
-            loop {
-                let message = input.recv().await.unwrap();
-                output.send(message).await.unwrap();
-            }
+    fn build_message(user: &str, service: &str) -> Message {
+        Message {
+            user: user.into(),
+            service: service.into(),
+            args: vec!["arg0".into(), "arg1".into()],
+            body: "abcd".into(),
+            files: [
+                ("file1".to_string(), b"1234".to_vec()),
+                ("file2".to_string(), b"5678".to_vec()),
+            ]
+            .into_iter()
+            .collect(),
         }
     }
 
@@ -164,22 +146,45 @@ mod tests {
                 .await;
         });
 
-        let input_message = Message {
-            user: "user_0".into(),
-            service: "s-echo".into(),
-            args: vec!["arg0".into(), "arg1".into()],
-            body: "abcd".into(),
-            files: [
-                ("file1".to_string(), b"1234".to_vec()),
-                ("file2".to_string(), b"5678".to_vec()),
-            ]
-            .into_iter()
-            .collect(),
-        };
-
+        let input_message = build_message("user_0", "s-echo");
         input_sender.send(input_message.clone()).await.unwrap();
-        let output_message = output_receiver.recv().await.unwrap();
 
+        let output_message = output_receiver.recv().await.unwrap();
         assert_eq!(input_message, output_message);
+
+        let input_message = build_message("user_0", "unknown");
+        input_sender.send(input_message.clone()).await.unwrap();
+
+        assert!(timeout(Duration::from_millis(100), output_receiver.recv())
+            .await
+            .is_err());
+    }
+
+    #[tokio::test]
+    async fn whitelist() {
+        let (input_sender, input_receiver) = mpsc::channel(32);
+        let (output_sender, mut output_receiver) = mpsc::channel(32);
+
+        tokio::spawn(async move {
+            Engine::default()
+                .input(input_receiver)
+                .output(output_sender)
+                .add_service_for("s-echo", Echo, ["user_0"])
+                .run()
+                .await;
+        });
+
+        let input_message = build_message("user_0", "s-echo");
+        input_sender.send(input_message.clone()).await.unwrap();
+
+        let output_message = output_receiver.recv().await.unwrap();
+        assert_eq!(input_message, output_message);
+
+        let input_message = build_message("user_1", "s-echo");
+        input_sender.send(input_message.clone()).await.unwrap();
+
+        assert!(timeout(Duration::from_millis(100), output_receiver.recv())
+            .await
+            .is_err());
     }
 }
