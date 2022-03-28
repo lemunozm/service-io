@@ -4,7 +4,7 @@ use async_trait::async_trait;
 
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct Message {
     pub user: String,
     pub service: String,
