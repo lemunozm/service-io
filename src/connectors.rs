@@ -1,3 +1,5 @@
+mod mpsc;
+
 mod stdin;
 pub use stdin::UserStdin;
 
@@ -7,4 +9,5 @@ pub use stdout::DebugStdout;
 mod imap;
 pub use self::imap::ImapClient;
 
-mod mpsc;
+mod smtp;
+pub use smtp::SmtpClient;

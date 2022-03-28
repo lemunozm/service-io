@@ -1,10 +1,13 @@
+use crate::interface::{Message, OutputConnector};
 use crate::util::IntoOption;
+
+use tokio::sync::mpsc;
 
 use lettre::message::{header::ContentType, Attachment, Mailbox, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
-use lettre::{Address, SmtpTransport, Transport};
+use lettre::{Address, AsyncSmtpTransport, AsyncTransport, Tokio1Executor};
 
-use std::fmt;
+use async_trait::async_trait;
 
 #[derive(Default)]
 pub struct SmtpClient {
@@ -34,80 +37,54 @@ impl SmtpClient {
         self.sender_name = value.into_some();
         self
     }
+}
 
-    pub fn build(self) -> SmtpClient {
+#[async_trait]
+impl OutputConnector for SmtpClient {
+    async fn run(mut self: Box<Self>, mut receiver: mpsc::Receiver<Message>) {
         let address = self.email.parse::<Address>().unwrap();
         let user = address.user().to_string();
         let credentials = Credentials::new(user, self.password.into());
 
-        SmtpClient {
-            from: Mailbox::new(self.sender_name, address),
-            mailer: SmtpTransport::relay(self.smtp_domain.as_ref())
-                .unwrap()
-                .credentials(credentials)
-                .build(),
+        let from = Mailbox::new(self.sender_name, address);
+        let mailer = AsyncSmtpTransport::<Tokio1Executor>::relay(self.smtp_domain.as_ref())
+            .unwrap()
+            .credentials(credentials)
+            .build();
+
+        loop {
+            let message = receiver.recv().await.unwrap();
+            let email = message_to_email(message, from.clone());
+            mailer.send(email).await.unwrap();
         }
     }
 }
 
-pub struct SmtpClient {
-    from: Mailbox,
-    mailer: SmtpTransport,
-}
+fn message_to_email(message: Message, from: Mailbox) -> lettre::Message {
+    let to_address = message.user.parse::<Address>().unwrap();
 
-impl SmtpClient {
-    pub fn builder() -> SmtpClientBuilder {
-        SmtpClientBuilder::default()
+    let single_parts = message
+        .files
+        .into_iter()
+        .map(|(filename, filebody)| {
+            Attachment::new(filename).body(
+                filebody,
+                ContentType::parse("application/octet-stream").unwrap(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let mut multipart = MultiPart::alternative().singlepart(SinglePart::plain(message.body));
+    for single in single_parts {
+        multipart = multipart.singlepart(single);
     }
 
-    pub fn send_email(
-        &mut self,
-        to_email: &str,
-        subject: &str,
-        body: impl Into<String>,
-        attachments: impl IntoIterator<Item = (String, Vec<u8>)>,
-    ) -> Result<(), SmtpClientError> {
-        let to_address = to_email.parse::<Address>().unwrap();
+    let subject = message.args.join(" ");
 
-        let single_parts = attachments
-            .into_iter()
-            .map(|(filename, filebody)| {
-                Attachment::new(filename).body(
-                    filebody,
-                    ContentType::parse("application/octet-stream").unwrap(),
-                )
-            })
-            .collect::<Vec<_>>();
-
-        let mut multipart = MultiPart::alternative().singlepart(SinglePart::plain(body.into()));
-        for single in single_parts {
-            multipart = multipart.singlepart(single);
-        }
-
-        let email = lettre::Message::builder()
-            .from(self.from.clone())
-            .to(Mailbox::new(None, to_address))
-            .subject(subject)
-            .multipart(multipart)
-            .map_err(|_| SmtpClientError::EmailFormat)?;
-
-        self.mailer
-            .send(&email)
-            .map(|_| ())
-            .map_err(|_| SmtpClientError::Connection)
-    }
+    lettre::Message::builder()
+        .from(from)
+        .to(Mailbox::new(None, to_address))
+        .subject(format!("{} {}", message.service, subject))
+        .multipart(multipart)
+        .unwrap()
 }
-
-#[derive(Debug)]
-pub enum SmtpClientError {
-    Connection,
-    EmailFormat,
-}
-
-impl fmt::Display for SmtpClientError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl std::error::Error for SmtpClientError {}
