@@ -1,10 +1,15 @@
+use crate::channel::{Receiver, Sender};
 use crate::interface::{InputConnector, Message, OutputConnector, Service};
 
-use tokio::sync::{mpsc, RwLock};
+use tokio::{
+    sync::{mpsc, Mutex},
+    time,
+};
 
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::time::Duration;
 
 struct ServiceConfig {
     name: String,
@@ -15,7 +20,6 @@ struct ServiceConfig {
 struct ServiceHandle {
     whitelist: Option<HashSet<String>>,
     input_sender: mpsc::Sender<Message>,
-    //input_sender: Arc<RwLock<mpsc::Sender<Message>>>,
 }
 
 #[derive(Default)]
@@ -79,18 +83,29 @@ impl Engine {
             .into_iter()
             .map(|config| {
                 let (input_sender, input_receiver) = mpsc::channel(32);
-                let output_sender = output_sender.clone();
-                tokio::spawn(async move {
-                    let service = (config.builder)();
-                    //loop {
-                    let task = tokio::spawn(async move {
-                        service.run(input_receiver, output_sender).await;
-                    });
+                tokio::spawn({
+                    let input_receiver = Arc::new(Mutex::new(input_receiver));
+                    let output_sender = output_sender.clone();
+                    async move {
+                        loop {
+                            let service = (config.builder)();
+                            let task = tokio::spawn({
+                                let input_receiver = input_receiver.clone();
+                                let output_sender = output_sender.clone();
+                                async move {
+                                    service
+                                        .run(Receiver(input_receiver), Sender(output_sender))
+                                        .await
+                                        .ok();
+                                }
+                            });
 
-                    if task.await.is_ok() {
-                        //break;
+                            match task.await {
+                                Ok(_) => break,
+                                Err(_) => time::sleep(Duration::from_secs(1)).await,
+                            }
+                        }
                     }
-                    //}
                 });
 
                 (
@@ -122,6 +137,7 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::channel::ClosedChannel;
     use crate::services::Echo;
 
     use async_trait::async_trait;
@@ -151,9 +167,9 @@ mod tests {
     impl Service for Panic {
         async fn run(
             self: Box<Self>,
-            _input: mpsc::Receiver<Message>,
-            _output: mpsc::Sender<Message>,
-        ) {
+            _input: Receiver<Message>,
+            _output: Sender<Message>,
+        ) -> Result<(), ClosedChannel> {
             panic!("The test service has panicked");
         }
     }
@@ -172,15 +188,12 @@ mod tests {
                 .await;
         });
 
-        let input_message = build_message("user_0", "s-echo");
-        input_sender.send(input_message.clone()).await.unwrap();
+        let message = build_message("user_0", "s-echo");
+        input_sender.send(message.clone()).await.unwrap();
+        assert_eq!(Some(message), output_receiver.recv().await);
 
-        let output_message = output_receiver.recv().await.unwrap();
-        assert_eq!(input_message, output_message);
-
-        let input_message = build_message("user_0", "unknown");
-        input_sender.send(input_message.clone()).await.unwrap();
-
+        let message = build_message("user_0", "unknown");
+        input_sender.send(message.clone()).await.unwrap();
         assert!(timeout(Duration::from_millis(100), output_receiver.recv())
             .await
             .is_err());
@@ -200,15 +213,12 @@ mod tests {
                 .await;
         });
 
-        let input_message = build_message("user_0", "s-echo");
-        input_sender.send(input_message.clone()).await.unwrap();
+        let message = build_message("user_0", "s-echo");
+        input_sender.send(message.clone()).await.unwrap();
+        assert_eq!(Some(message), output_receiver.recv().await);
 
-        let output_message = output_receiver.recv().await.unwrap();
-        assert_eq!(input_message, output_message);
-
-        let input_message = build_message("user_1", "s-echo");
-        input_sender.send(input_message.clone()).await.unwrap();
-
+        let message = build_message("user_1", "s-echo");
+        input_sender.send(message.clone()).await.unwrap();
         assert!(timeout(Duration::from_millis(100), output_receiver.recv())
             .await
             .is_err());
@@ -229,10 +239,14 @@ mod tests {
                 .await;
         });
 
-        let input_message = build_message("user_0", "s-echo");
-        input_sender.send(input_message.clone()).await.unwrap();
+        let message = build_message("user_0", "s-echo");
+        input_sender.send(message.clone()).await.unwrap();
+        assert_eq!(Some(message), output_receiver.recv().await);
 
-        let output_message = output_receiver.recv().await.unwrap();
-        assert_eq!(input_message, output_message);
+        /*
+        let message = build_message("user_0", "s-panic");
+        input_sender.send(message.clone()).await.unwrap();
+        assert_eq!(None, output_receiver.recv().await);
+        */
     }
 }

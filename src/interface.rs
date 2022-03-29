@@ -1,3 +1,5 @@
+use crate::channel::{ClosedChannel, Receiver, Sender};
+
 use tokio::sync::mpsc;
 
 use async_trait::async_trait;
@@ -25,8 +27,9 @@ pub trait OutputConnector {
 
 #[async_trait]
 pub trait Service {
-    async fn run(self: Box<Self>, input: mpsc::Receiver<Message>, output: mpsc::Sender<Message>);
-    fn box_clone(&self) -> Box<dyn Service + Send> {
-        todo!()
-    }
+    async fn run(
+        self: Box<Self>,
+        input: Receiver<Message>,
+        output: Sender<Message>,
+    ) -> Result<(), ClosedChannel>;
 }

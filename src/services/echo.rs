@@ -1,6 +1,5 @@
+use crate::channel::{ClosedChannel, Receiver, Sender};
 use crate::interface::{Message, Service};
-
-use tokio::sync::mpsc;
 
 use async_trait::async_trait;
 
@@ -11,12 +10,12 @@ pub struct Echo;
 impl Service for Echo {
     async fn run(
         self: Box<Self>,
-        mut input: mpsc::Receiver<Message>,
-        output: mpsc::Sender<Message>,
-    ) {
+        mut input: Receiver<Message>,
+        output: Sender<Message>,
+    ) -> Result<(), ClosedChannel> {
         loop {
-            let message = input.recv().await.unwrap();
-            output.send(message).await.unwrap();
+            let message = input.recv().await?;
+            output.send(message).await?;
         }
     }
 }
