@@ -1,5 +1,4 @@
-use std::sync::Arc;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::mpsc;
 
 #[derive(Debug)]
 pub struct ClosedChannel;
@@ -17,10 +16,10 @@ impl<T> Sender<T> {
     }
 }
 
-pub struct Receiver<T>(pub(crate) Arc<Mutex<mpsc::Receiver<T>>>);
+pub struct Receiver<T>(pub(crate) mpsc::Receiver<T>);
 
 impl<T> Receiver<T> {
     pub async fn recv(&mut self) -> Result<T, ClosedChannel> {
-        self.0.lock().await.recv().await.ok_or(ClosedChannel)
+        self.0.recv().await.ok_or(ClosedChannel)
     }
 }
