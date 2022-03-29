@@ -9,7 +9,7 @@ use lettre::{Address, AsyncSmtpTransport, AsyncTransport, Tokio1Executor};
 
 use async_trait::async_trait;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct SmtpClient {
     smtp_domain: String,
     email: String,

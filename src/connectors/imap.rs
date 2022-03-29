@@ -8,7 +8,7 @@ use tokio::sync::mpsc;
 use std::collections::HashMap;
 use std::time::Duration;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ImapClient {
     imap_domain: String,
     email: String,

@@ -1,19 +1,21 @@
 use crate::interface::{InputConnector, Message, OutputConnector, Service};
 
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, RwLock};
 
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::sync::Arc;
 
 struct ServiceConfig {
     name: String,
-    service: Box<dyn Service + Send>,
+    builder: Box<dyn Fn() -> Box<dyn Service + Send> + Send>,
     whitelist: Option<HashSet<String>>,
 }
 
 struct ServiceHandle {
     whitelist: Option<HashSet<String>>,
     input_sender: mpsc::Sender<Message>,
+    //input_sender: Arc<RwLock<mpsc::Sender<Message>>>,
 }
 
 #[derive(Default)]
@@ -37,11 +39,11 @@ impl Engine {
     pub fn add_service(
         mut self,
         name: impl Into<String>,
-        service: impl Service + Send + 'static,
+        service: impl Service + Send + Clone + 'static,
     ) -> Engine {
         self.service_configs.push(ServiceConfig {
             name: name.into(),
-            service: Box::new(service),
+            builder: Box::new(move || Box::new(service.clone())),
             whitelist: None,
         });
         self
@@ -50,12 +52,12 @@ impl Engine {
     pub fn add_service_for<S: Into<String>>(
         mut self,
         name: impl Into<String>,
-        service: impl Service + Send + 'static,
+        service: impl Service + Send + Clone + 'static,
         whitelist: impl IntoIterator<Item = S>,
     ) -> Engine {
         self.service_configs.push(ServiceConfig {
             name: name.into(),
-            service: Box::new(service),
+            builder: Box::new(move || Box::new(service.clone())),
             whitelist: Some(whitelist.into_iter().map(|s| s.into()).collect()),
         });
         self
@@ -79,7 +81,16 @@ impl Engine {
                 let (input_sender, input_receiver) = mpsc::channel(32);
                 let output_sender = output_sender.clone();
                 tokio::spawn(async move {
-                    config.service.run(input_receiver, output_sender).await;
+                    let service = (config.builder)();
+                    //loop {
+                    let task = tokio::spawn(async move {
+                        service.run(input_receiver, output_sender).await;
+                    });
+
+                    if task.await.is_ok() {
+                        //break;
+                    }
+                    //}
                 });
 
                 (
@@ -113,6 +124,7 @@ mod tests {
     use super::*;
     use crate::services::Echo;
 
+    use async_trait::async_trait;
     use tokio::time::timeout;
 
     use std::time::Duration;
@@ -129,6 +141,20 @@ mod tests {
             ]
             .into_iter()
             .collect(),
+        }
+    }
+
+    #[derive(Clone)]
+    struct Panic;
+
+    #[async_trait]
+    impl Service for Panic {
+        async fn run(
+            self: Box<Self>,
+            _input: mpsc::Receiver<Message>,
+            _output: mpsc::Sender<Message>,
+        ) {
+            panic!("The test service has panicked");
         }
     }
 
@@ -186,5 +212,27 @@ mod tests {
         assert!(timeout(Duration::from_millis(100), output_receiver.recv())
             .await
             .is_err());
+    }
+
+    #[tokio::test]
+    async fn surviving_to_panic() {
+        let (input_sender, input_receiver) = mpsc::channel(32);
+        let (output_sender, mut output_receiver) = mpsc::channel(32);
+
+        tokio::spawn(async move {
+            Engine::default()
+                .input(input_receiver)
+                .output(output_sender)
+                .add_service("s-panic", Panic)
+                .add_service("s-echo", Echo)
+                .run()
+                .await;
+        });
+
+        let input_message = build_message("user_0", "s-echo");
+        input_sender.send(input_message.clone()).await.unwrap();
+
+        let output_message = output_receiver.recv().await.unwrap();
+        assert_eq!(input_message, output_message);
     }
 }
