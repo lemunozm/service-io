@@ -1,7 +1,6 @@
+use crate::channel::{ClosedChannel, Receiver};
 use crate::interface::{Message, OutputConnector};
 use crate::util::IntoOption;
-
-use tokio::sync::mpsc;
 
 use lettre::message::{header::ContentType, Attachment, Mailbox, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
@@ -41,7 +40,10 @@ impl SmtpClient {
 
 #[async_trait]
 impl OutputConnector for SmtpClient {
-    async fn run(mut self: Box<Self>, mut receiver: mpsc::Receiver<Message>) {
+    async fn run(
+        mut self: Box<Self>,
+        mut receiver: Receiver<Message>,
+    ) -> Result<(), ClosedChannel> {
         let address = self.email.parse::<Address>().unwrap();
         let user = address.user().to_string();
         let credentials = Credentials::new(user, self.password.into());
@@ -53,7 +55,7 @@ impl OutputConnector for SmtpClient {
             .build();
 
         loop {
-            let message = receiver.recv().await.unwrap();
+            let message = receiver.recv().await?;
             let email = message_to_email(message, from.clone());
             mailer.send(email).await.unwrap();
         }

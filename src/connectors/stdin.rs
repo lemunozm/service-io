@@ -1,6 +1,5 @@
+use crate::channel::{ClosedChannel, Sender};
 use crate::interface::{InputConnector, Message};
-
-use tokio::sync::mpsc;
 
 use async_trait::async_trait;
 
@@ -10,7 +9,7 @@ pub struct UserStdin<N>(pub N);
 
 #[async_trait]
 impl<N: Into<String> + Send> InputConnector for UserStdin<N> {
-    async fn run(mut self: Box<Self>, sender: mpsc::Sender<Message>) {
+    async fn run(mut self: Box<Self>, sender: Sender<Message>) -> Result<(), ClosedChannel> {
         let user_name = self.0.into();
         loop {
             let line =
@@ -27,7 +26,7 @@ impl<N: Into<String> + Send> InputConnector for UserStdin<N> {
                     ..Default::default()
                 };
 
-                sender.send(message).await.unwrap();
+                sender.send(message).await?;
             }
         }
     }

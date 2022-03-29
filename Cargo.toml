@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "io-std", "io-util", "rt-multi-thread"] }
+futures = "0.3"
 async-trait = "0.1"
 imap = "2.4"
 native-tls = "0.2.8"

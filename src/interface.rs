@@ -1,7 +1,5 @@
 use crate::channel::{ClosedChannel, Receiver, Sender};
 
-use tokio::sync::mpsc;
-
 use async_trait::async_trait;
 
 use std::collections::HashMap;
@@ -17,12 +15,12 @@ pub struct Message {
 
 #[async_trait]
 pub trait InputConnector {
-    async fn run(self: Box<Self>, sender: mpsc::Sender<Message>);
+    async fn run(self: Box<Self>, sender: Sender<Message>) -> Result<(), ClosedChannel>;
 }
 
 #[async_trait]
 pub trait OutputConnector {
-    async fn run(self: Box<Self>, receiver: mpsc::Receiver<Message>);
+    async fn run(self: Box<Self>, receiver: Receiver<Message>) -> Result<(), ClosedChannel>;
 }
 
 #[async_trait]

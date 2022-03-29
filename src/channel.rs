@@ -11,7 +11,7 @@ impl<T> Sender<T> {
         self.0.send(value).await.map_err(|_| ClosedChannel)
     }
 
-    pub async fn blocking_send(&self, value: T) -> Result<(), ClosedChannel> {
+    pub fn blocking_send(&self, value: T) -> Result<(), ClosedChannel> {
         self.0.blocking_send(value).map_err(|_| ClosedChannel)
     }
 }

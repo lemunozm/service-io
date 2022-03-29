@@ -1,9 +1,9 @@
+use crate::channel::{ClosedChannel, Sender};
 use crate::interface::{InputConnector, Message};
 
 use async_trait::async_trait;
 use mailparse::{DispositionType, MailHeaderMap, ParsedMail};
 use native_tls::TlsConnector;
-use tokio::sync::mpsc;
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -40,7 +40,7 @@ impl ImapClient {
 
 #[async_trait]
 impl InputConnector for ImapClient {
-    async fn run(mut self: Box<Self>, sender: mpsc::Sender<Message>) {
+    async fn run(mut self: Box<Self>, sender: Sender<Message>) -> Result<(), ClosedChannel> {
         tokio::task::spawn_blocking(move || {
             let tls = TlsConnector::builder().build().unwrap();
             let client = imap::connect(
@@ -71,13 +71,13 @@ impl InputConnector for ImapClient {
                     if let Some(body) = email.body() {
                         let parsed = mailparse::parse_mail(body).unwrap();
                         let message = email_to_message(parsed);
-                        sender.blocking_send(message).unwrap();
+                        sender.blocking_send(message)?;
                     }
                 }
             }
         })
         .await
-        .unwrap();
+        .unwrap()
     }
 }
 

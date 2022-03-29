@@ -65,12 +65,16 @@ impl Engine {
     pub async fn run(self) {
         let (input_sender, mut input_receiver) = mpsc::channel(32);
         tokio::spawn(async move {
-            self.input.unwrap().run(input_sender).await;
+            self.input.unwrap().run(Sender(input_sender)).await.ok();
         });
 
         let (output_sender, output_receiver) = mpsc::channel(32);
-        tokio::spawn(async move {
-            self.output.unwrap().run(output_receiver).await;
+        let mut output_task = tokio::spawn(async move {
+            self.output
+                .unwrap()
+                .run(Receiver(output_receiver))
+                .await
+                .ok();
         });
 
         let services: HashMap<String, ServiceHandle> = self
@@ -78,8 +82,8 @@ impl Engine {
             .into_iter()
             .map(|config| {
                 let (input_sender, input_receiver) = mpsc::channel(32);
-                let service = (config.builder)();
                 let output_sender = output_sender.clone();
+                let service = (config.builder)();
                 tokio::spawn(async move {
                     service
                         .run(Receiver(input_receiver), Sender(output_sender))
@@ -98,18 +102,21 @@ impl Engine {
             .collect();
 
         loop {
-            let input_message = input_receiver.recv().await.unwrap();
-            if let Some(handle) = services.get(&input_message.service) {
-                let allowed = match &handle.whitelist {
-                    Some(whitelist) => whitelist.contains(&input_message.user),
-                    None => true,
-                };
+            tokio::select! {
+                input_message = input_receiver.recv() => {
+                    let input_message = input_message.unwrap();
+                    if let Some(handle) = services.get(&input_message.service) {
+                        let allowed = match &handle.whitelist {
+                            Some(whitelist) => whitelist.contains(&input_message.user),
+                            None => true,
+                        };
 
-                if allowed {
-                    if handle.input_sender.send(input_message).await.is_err() {
-                        break;
+                        if allowed {
+                            handle.input_sender.send(input_message).await.ok();
+                        }
                     }
                 }
+                _ = &mut output_task => break,
             }
         }
     }
