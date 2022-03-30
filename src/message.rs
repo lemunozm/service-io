@@ -34,7 +34,7 @@ impl Message {
     }
 
     pub fn body(mut self, body: impl Into<String>) -> Self {
-        self.service_name = body.into();
+        self.body = body.into();
         self
     }
 

@@ -1,6 +1,6 @@
 use service_io::connectors::{DebugStdout, UserStdin};
 use service_io::engine::Engine;
-use service_io::services::{Alarm, Echo, PublicIp};
+use service_io::services::{Alarm, Echo, Process, PublicIp};
 
 #[tokio::main]
 async fn main() {
@@ -10,6 +10,7 @@ async fn main() {
         .add_service("s-echo", Echo)
         .add_service("s-public-ip", PublicIp)
         .add_service("s-alarm", Alarm)
+        .add_service("s-process", Process)
         .run()
         .await;
 }

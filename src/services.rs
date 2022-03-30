@@ -6,3 +6,6 @@ pub use alarm::Alarm;
 
 mod public_ip;
 pub use self::public_ip::PublicIp;
+
+mod process;
+pub use process::Process;

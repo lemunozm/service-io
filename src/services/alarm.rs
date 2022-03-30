@@ -28,7 +28,7 @@ impl Service for Alarm {
                         let response = Message::response(&request).args([*name]);
                         async move {
                             time::sleep(Duration::from_secs(minutes * 60)).await;
-                            output.send(response).await.unwrap();
+                            output.send(response).await.ok();
                         }
                     });
                     continue;
