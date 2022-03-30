@@ -59,6 +59,7 @@ async fn main() {
                 .sender_name(cli.sender_name),
         )
         .map_input(util::service_name_first_char_to_lowercase)
+        .filter_input(|message| message.service_name.starts_with("s-"))
         .add_service("s-echo", Echo)
         .add_service("s-alarm", Alarm)
         .add_service("s-public-ip", PublicIp)

@@ -54,6 +54,7 @@ pub struct Engine {
     input: Option<Box<dyn InputConnector + Send>>,
     output: Option<Box<dyn OutputConnector + Send>>,
     input_mapping: Option<Box<dyn Fn(Message) -> Message + Send>>,
+    input_filtering: Option<Box<dyn Fn(&Message) -> bool + Send>>,
     service_configs: Vec<ServiceConfig>,
 }
 
@@ -70,6 +71,11 @@ impl Engine {
 
     pub fn map_input(mut self, mapping: impl Fn(Message) -> Message + Send + 'static) -> Engine {
         self.input_mapping = Some(Box::new(mapping));
+        self
+    }
+
+    pub fn filter_input(mut self, filtering: impl Fn(&Message) -> bool + Send + 'static) -> Engine {
+        self.input_filtering = Some(Box::new(filtering));
         self
     }
 
@@ -119,9 +125,19 @@ impl Engine {
                         None => message,
                     };
 
-                    match services.get(&message.service_name) {
-                        Some(handle) => handle.process_message(message).await,
-                        None => log::warn!("Drop Message for unknown service '{}'", message.service_name),
+                    let allowed = match &self.input_filtering {
+                        Some(filter) => filter(&message),
+                        None => true,
+                    };
+
+                    if allowed {
+                        match services.get(&message.service_name) {
+                            Some(handle) => handle.process_message(message).await,
+                            None => log::warn!(
+                                "Drop Message for unknown service '{}'",
+                                message.service_name
+                            ),
+                        }
                     }
                 }
                 _ = &mut output_task => break,
