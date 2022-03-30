@@ -2,10 +2,12 @@ use crate::channel::{ClosedChannel, Sender};
 use crate::interface::{InputConnector, Message};
 
 use async_trait::async_trait;
+use imap::{error::Error, Session};
 use mailparse::{DispositionType, MailHeaderMap, ParsedMail};
 use native_tls::TlsConnector;
 
 use std::collections::HashMap;
+use std::io::{Read, Write};
 use std::time::Duration;
 
 #[derive(Default, Clone)]
@@ -57,28 +59,37 @@ impl InputConnector for ImapClient {
             loop {
                 std::thread::sleep(self.polling_time);
 
-                imap_session.select("INBOX").unwrap();
-
-                let emails = imap_session.fetch("1", "RFC822").unwrap();
-
-                if let Some(email) = emails.iter().next() {
-                    imap_session
-                        .store(format!("{}", email.message), "+FLAGS (\\Deleted)")
-                        .unwrap();
-
-                    imap_session.expunge().unwrap();
-
-                    if let Some(body) = email.body() {
-                        let parsed = mailparse::parse_mail(body).unwrap();
-                        let message = email_to_message(parsed);
-                        sender.blocking_send(message)?;
-                    }
+                match read_inbox(&mut imap_session) {
+                    Ok(Some(message)) => sender.blocking_send(message)?,
+                    Ok(None) => (),
+                    Err(err) => log::error!("{}", err),
                 }
             }
         })
         .await
         .unwrap()
     }
+}
+
+fn read_inbox<T: Read + Write>(imap_session: &mut Session<T>) -> Result<Option<Message>, Error> {
+    imap_session.select("INBOX")?;
+
+    let emails = imap_session.fetch("1", "RFC822")?;
+
+    if let Some(email) = emails.iter().next() {
+        imap_session.store(format!("{}", email.message), "+FLAGS (\\Deleted)")?;
+
+        imap_session.expunge()?;
+
+        if let Some(body) = email.body() {
+            match mailparse::parse_mail(body) {
+                Ok(parsed) => return Ok(Some(email_to_message(parsed))),
+                Err(err) => log::error!("{}", err),
+            }
+        }
+    }
+
+    Ok(None)
 }
 
 fn email_to_message(email: ParsedMail) -> Message {
@@ -88,7 +99,7 @@ fn email_to_message(email: ParsedMail) -> Message {
     let mut body = String::default();
     for part in &email.subparts {
         if part.ctype.mimetype.starts_with("text/plain") {
-            body = part.get_body().unwrap();
+            body = part.get_body().unwrap_or_default();
         }
     }
 
@@ -97,7 +108,7 @@ fn email_to_message(email: ParsedMail) -> Message {
         let content_disposition = part.get_content_disposition();
         if let DispositionType::Attachment = content_disposition.disposition {
             if let Some(filename) = content_disposition.params.get("filename") {
-                files.insert(filename.into(), part.get_body_raw().unwrap());
+                files.insert(filename.into(), part.get_body_raw().unwrap_or_default());
             }
         }
     }
@@ -108,9 +119,9 @@ fn email_to_message(email: ParsedMail) -> Message {
             .get_first_value("From")
             .map(|from_list| {
                 mailparse::addrparse(&from_list)
-                    .unwrap()
+                    .expect("Have a 'From' email")
                     .extract_single_info()
-                    .unwrap()
+                    .expect("Have at least one 'From' email")
                     .addr
             })
             .unwrap_or_default(),

@@ -56,29 +56,40 @@ impl OutputConnector for SmtpClient {
 
         loop {
             let message = receiver.recv().await?;
-            let email = message_to_email(message, from.clone());
-            mailer.send(email).await.unwrap();
+            if let Some(email) = message_to_email(message, from.clone()) {
+                if let Err(err) = mailer.send(email).await {
+                    log::error!("Sending error: {}", err);
+                }
+            }
         }
     }
 }
 
-fn message_to_email(message: Message, from: Mailbox) -> lettre::Message {
-    let to_address = message.user.parse::<Address>().unwrap();
+fn message_to_email(message: Message, from: Mailbox) -> Option<lettre::Message> {
+    let to_address = message
+        .user
+        .parse::<Address>()
+        .map_err(|err| log::error!("{}", err))
+        .ok()?;
 
     let single_parts = message
         .files
         .into_iter()
         .map(|(filename, filebody)| {
-            Attachment::new(filename).body(
-                filebody,
-                ContentType::parse("application/octet-stream").unwrap(),
+            Some(
+                Attachment::new(filename).body(
+                    filebody,
+                    ContentType::parse("application/octet-stream")
+                        .map_err(|err| log::error!("{}", err))
+                        .ok()?,
+                ),
             )
         })
         .collect::<Vec<_>>();
 
     let mut multipart = MultiPart::alternative().singlepart(SinglePart::plain(message.body));
     for single in single_parts {
-        multipart = multipart.singlepart(single);
+        multipart = multipart.singlepart(single?);
     }
 
     let subject = message.args.join(" ");
@@ -88,5 +99,6 @@ fn message_to_email(message: Message, from: Mailbox) -> lettre::Message {
         .to(Mailbox::new(None, to_address))
         .subject(format!("{} {}", message.service, subject))
         .multipart(multipart)
-        .unwrap()
+        .map_err(|err| log::error!("{}", err))
+        .ok()
 }
