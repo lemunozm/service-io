@@ -5,10 +5,11 @@ use crate::message::Message;
 use async_trait::async_trait;
 use imap::{error::Error, Session};
 use mailparse::{DispositionType, MailHeaderMap, ParsedMail};
-use native_tls::TlsConnector;
+use native_tls::{TlsConnector, TlsStream};
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
+use std::net::TcpStream;
 use std::time::Duration;
 
 #[derive(Default, Clone)]
@@ -39,31 +40,43 @@ impl ImapClient {
         self.polling_time = duration;
         self
     }
+
+    fn connect(&self) -> Result<Session<TlsStream<TcpStream>>, Error> {
+        let tls = TlsConnector::builder().build().unwrap();
+        let client = imap::connect(
+            (self.imap_domain.as_str(), 993),
+            self.imap_domain.as_str(),
+            &tls,
+        )?;
+
+        client.login(&self.email, &self.password).map_err(|e| e.0)
+    }
 }
 
 #[async_trait]
 impl InputConnector for ImapClient {
     async fn run(mut self: Box<Self>, sender: Sender<Message>) -> Result<(), ClosedChannel> {
         tokio::task::spawn_blocking(move || {
-            let tls = TlsConnector::builder().build().unwrap();
-            let client = imap::connect(
-                (self.imap_domain.as_str(), 993),
-                self.imap_domain.as_str(),
-                &tls,
-            )
-            .unwrap();
-            let mut imap_session = client
-                .login(self.email, self.password)
-                .map_err(|e| e.0)
-                .unwrap();
-
+            let mut session = self.connect().unwrap();
             loop {
                 std::thread::sleep(self.polling_time);
 
-                match read_inbox(&mut imap_session) {
+                match read_inbox(&mut session) {
                     Ok(Some(message)) => sender.blocking_send(message)?,
                     Ok(None) => (),
-                    Err(err) => log::error!("{}", err),
+                    Err(err) => {
+                        log::error!("{}", err);
+                        session = match self.connect() {
+                            Ok(session) => {
+                                log::info!("Connection restored");
+                                session
+                            }
+                            Err(err) => {
+                                log::error!("{}", err);
+                                continue;
+                            }
+                        }
+                    }
                 }
             }
         })
@@ -72,15 +85,15 @@ impl InputConnector for ImapClient {
     }
 }
 
-fn read_inbox<T: Read + Write>(imap_session: &mut Session<T>) -> Result<Option<Message>, Error> {
-    imap_session.select("INBOX")?;
+fn read_inbox<T: Read + Write>(session: &mut Session<T>) -> Result<Option<Message>, Error> {
+    session.select("INBOX")?;
 
-    let emails = imap_session.fetch("1", "RFC822")?;
+    let emails = session.fetch("1", "RFC822")?;
 
     if let Some(email) = emails.iter().next() {
-        imap_session.store(format!("{}", email.message), "+FLAGS (\\Deleted)")?;
+        session.store(format!("{}", email.message), "+FLAGS (\\Deleted)")?;
 
-        imap_session.expunge()?;
+        session.expunge()?;
 
         if let Some(body) = email.body() {
             match mailparse::parse_mail(body) {
