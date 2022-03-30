@@ -1,7 +1,7 @@
 use service_io::connectors::{DebugStdout, ImapClient};
 use service_io::engine::Engine;
 use service_io::message::util;
-use service_io::services::{Echo, PublicIp};
+use service_io::services::{Alarm, Echo, PublicIp};
 
 use clap::Parser;
 
@@ -42,6 +42,7 @@ async fn main() {
         .map_input(util::service_name_first_char_to_lowercase)
         .add_service("s-echo", Echo)
         .add_service("s-public-ip", PublicIp)
+        .add_service("s-alarm", Alarm)
         .run()
         .await;
 }

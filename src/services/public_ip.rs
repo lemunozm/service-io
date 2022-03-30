@@ -16,18 +16,15 @@ impl Service for PublicIp {
     ) -> Result<(), ClosedChannel> {
         loop {
             let request = input.recv().await?;
-            match public_ip::addr().await {
-                Some(ip_addr) => {
-                    let response = Message {
-                        user: request.user,
-                        service_name: request.service_name,
-                        body: format!("{}", ip_addr),
-                        ..Default::default()
-                    };
-                    output.send(response).await?;
+            let response = match public_ip::addr().await {
+                Some(ip_addr) => Message::response(&request).body(format!("{}", ip_addr)),
+                None => {
+                    let msg = "Failed to get IP address";
+                    log::error!("{}", msg);
+                    Message::response(&request).args(["error"]).body(msg)
                 }
-                None => log::error!("Failed to get IP address"),
-            }
+            };
+            output.send(response).await?;
         }
     }
 }
