@@ -1,5 +1,6 @@
 use crate::channel::{ClosedChannel, Receiver, Sender};
-use crate::interface::{InputConnector, Message, OutputConnector, Service};
+use crate::interface::{InputConnector, OutputConnector, Service};
+use crate::message::Message;
 
 use tokio::{
     sync::mpsc,
@@ -28,7 +29,7 @@ impl ServiceHandle {
         };
 
         if allowed {
-            let service_name = message.service.clone();
+            let service_name = message.service_name.clone();
             match self.input_sender.send(message).await {
                 Ok(()) => log::info!("Processing message for service '{}'", service_name),
                 Err(_) => log::warn!("Drop message for removed service '{}'", service_name),
@@ -36,7 +37,7 @@ impl ServiceHandle {
         } else {
             log::warn!(
                 "Drop message for service '{}' not allowed for user '{}'",
-                message.service,
+                message.service_name,
                 message.user,
             );
         }
@@ -47,6 +48,7 @@ impl ServiceHandle {
 pub struct Engine {
     input: Option<Box<dyn InputConnector + Send>>,
     output: Option<Box<dyn OutputConnector + Send>>,
+    input_mapping: Option<Box<dyn Fn(Message) -> Message + Send>>,
     service_configs: Vec<ServiceConfig>,
 }
 
@@ -58,6 +60,11 @@ impl Engine {
 
     pub fn output(mut self, output: impl OutputConnector + Send + 'static) -> Engine {
         self.output = Some(Box::new(output));
+        self
+    }
+
+    pub fn map_input(mut self, mapping: impl Fn(Message) -> Message + Send + 'static) -> Engine {
+        self.input_mapping = Some(Box::new(mapping));
         self
     }
 
@@ -102,9 +109,14 @@ impl Engine {
         loop {
             tokio::select! {
                 Some(message) = input_receiver.recv() => {
-                    match services.get(&message.service) {
+                    let message = match &self.input_mapping {
+                        Some(map) => map(message),
+                        None => message,
+                    };
+
+                    match services.get(&message.service_name) {
                         Some(handle) => handle.process_message(message).await,
-                        None => log::warn!("Drop Message for unknown service '{}'", message.service),
+                        None => log::warn!("Drop Message for unknown service '{}'", message.service_name),
                     }
                 }
                 _ = &mut output_task => break,
@@ -197,6 +209,7 @@ impl Engine {
 mod tests {
     use super::*;
     use crate::channel::ClosedChannel;
+    use crate::message::util;
 
     use async_trait::async_trait;
     use tokio::time::timeout;
@@ -221,7 +234,7 @@ mod tests {
     fn build_message(user: &str, service: &str) -> Message {
         Message {
             user: user.into(),
-            service: service.into(),
+            service_name: service.into(),
             args: vec!["arg0".into(), "arg1".into()],
             body: "abcd".into(),
             files: [
@@ -250,6 +263,31 @@ mod tests {
         let message = build_message("user_0", "s-echo");
         input_sender.send(message.clone()).await.unwrap();
         assert_eq!(Some(message), output_receiver.recv().await);
+
+        task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn echo_with_input_mapping() {
+        let (input_sender, input_receiver) = mpsc::channel(32);
+        let (output_sender, mut output_receiver) = mpsc::channel(32);
+
+        let task = tokio::spawn(async move {
+            Engine::default()
+                .input(input_receiver)
+                .output(output_sender)
+                .map_input(util::service_name_first_char_to_lowercase)
+                .add_service("s-echo", EchoOnce)
+                .run()
+                .await;
+        });
+
+        let message = build_message("user_0", "S-echo");
+        input_sender.send(message.clone()).await.unwrap();
+        assert_eq!(
+            Some(util::service_name_first_char_to_lowercase(message)),
+            output_receiver.recv().await
+        );
 
         task.await.unwrap();
     }

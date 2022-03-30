@@ -1,5 +1,6 @@
 use service_io::connectors::{ImapClient, SmtpClient};
 use service_io::engine::Engine;
+use service_io::message::util;
 use service_io::services::Echo;
 
 use clap::Parser;
@@ -52,6 +53,7 @@ async fn main() {
                 .password(cli.password)
                 .sender_name(cli.sender_name),
         )
+        .map_input(util::service_name_first_char_to_lowercase)
         .add_service("s-echo", Echo)
         .run()
         .await;

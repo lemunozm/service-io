@@ -1,5 +1,6 @@
 use crate::channel::{ClosedChannel, Receiver, Sender};
-use crate::interface::{Message, Service};
+use crate::interface::Service;
+use crate::message::Message;
 
 use async_trait::async_trait;
 

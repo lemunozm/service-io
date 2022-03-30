@@ -1,5 +1,6 @@
 use crate::channel::{ClosedChannel, Sender};
-use crate::interface::{InputConnector, Message};
+use crate::interface::InputConnector;
+use crate::message::Message;
 
 use async_trait::async_trait;
 use imap::{error::Error, Session};
@@ -125,7 +126,7 @@ fn email_to_message(email: ParsedMail) -> Message {
                     .addr
             })
             .unwrap_or_default(),
-        service: subject_args.next().unwrap_or_default(),
+        service_name: subject_args.next().unwrap_or_default(),
         args: subject_args.collect(),
         body,
         files: files,

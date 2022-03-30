@@ -1,17 +1,7 @@
 use crate::channel::{ClosedChannel, Receiver, Sender};
+use crate::message::Message;
 
 use async_trait::async_trait;
-
-use std::collections::HashMap;
-
-#[derive(Default, Debug, Clone, PartialEq)]
-pub struct Message {
-    pub user: String,
-    pub service: String,
-    pub args: Vec<String>,
-    pub body: String,
-    pub files: HashMap<String, Vec<u8>>,
-}
 
 #[async_trait]
 pub trait InputConnector {

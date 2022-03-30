@@ -1,5 +1,6 @@
 use crate::channel::{ClosedChannel, Receiver};
-use crate::interface::{Message, OutputConnector};
+use crate::interface::OutputConnector;
+use crate::message::Message;
 
 use tokio::io::AsyncWriteExt;
 

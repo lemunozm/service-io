@@ -1,5 +1,6 @@
 use crate::channel::{ClosedChannel, Receiver};
-use crate::interface::{Message, OutputConnector};
+use crate::interface::OutputConnector;
+use crate::message::Message;
 use crate::util::IntoOption;
 
 use lettre::message::{header::ContentType, Attachment, Mailbox, MultiPart, SinglePart};
@@ -97,7 +98,7 @@ fn message_to_email(message: Message, from: Mailbox) -> Option<lettre::Message> 
     lettre::Message::builder()
         .from(from)
         .to(Mailbox::new(None, to_address))
-        .subject(format!("{} {}", message.service, subject))
+        .subject(format!("{} {}", message.service_name, subject))
         .multipart(multipart)
         .map_err(|err| log::error!("{}", err))
         .ok()

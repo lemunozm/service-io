@@ -1,5 +1,6 @@
 use crate::channel::{ClosedChannel, Sender};
-use crate::interface::{InputConnector, Message};
+use crate::interface::InputConnector;
+use crate::message::Message;
 
 use async_trait::async_trait;
 
@@ -21,7 +22,7 @@ impl<N: Into<String> + Send> InputConnector for UserStdin<N> {
             if let Some(service) = words.next() {
                 let message = Message {
                     user: user_name.clone(),
-                    service: service.into(),
+                    service_name: service.into(),
                     args: words.map(|s| s.into()).collect(),
                     ..Default::default()
                 };

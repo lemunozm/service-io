@@ -1,5 +1,6 @@
 use crate::channel::{ClosedChannel, Receiver, Sender};
-use crate::interface::{InputConnector, Message, OutputConnector};
+use crate::interface::{InputConnector, OutputConnector};
+use crate::message::Message;
 
 use async_trait::async_trait;
 use tokio::sync::mpsc;
