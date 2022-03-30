@@ -30,8 +30,13 @@ impl ServiceHandle {
 
         if allowed {
             let service_name = message.service_name.clone();
+            let args = message.args.join(" ");
             match self.input_sender.send(message).await {
-                Ok(()) => log::info!("Processing message for service '{}'", service_name),
+                Ok(()) => log::info!(
+                    "Processing message for service '{}' with args '{}'",
+                    service_name,
+                    args
+                ),
                 Err(_) => log::warn!("Drop message for removed service '{}'", service_name),
             }
         } else {
