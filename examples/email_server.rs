@@ -1,7 +1,7 @@
 use service_io::connectors::{ImapClient, SmtpClient};
 use service_io::engine::Engine;
 use service_io::message::util;
-use service_io::services::Echo;
+use service_io::services::{Echo, PublicIp};
 
 use clap::Parser;
 
@@ -32,11 +32,16 @@ struct Cli {
     /// Alias name for 'From' address
     #[clap(long)]
     sender_name: Option<String>,
+
+    #[clap(flatten)]
+    verbose: clap_verbosity_flag::Verbosity,
 }
 
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
+
+    configure_logger(cli.verbose.log_level_filter()).unwrap();
 
     Engine::default()
         .input(
@@ -55,6 +60,24 @@ async fn main() {
         )
         .map_input(util::service_name_first_char_to_lowercase)
         .add_service("s-echo", Echo)
+        .add_service("s-public-ip", PublicIp)
         .run()
         .await;
+}
+
+fn configure_logger(level_filter: log::LevelFilter) -> Result<(), log::SetLoggerError> {
+    let crate_filter = clap::crate_name!().replace("-", "_");
+    fern::Dispatch::new()
+        .level(level_filter)
+        .filter(move |metadata| metadata.target().starts_with(&crate_filter))
+        .format(move |out, message, record| {
+            out.finish(format_args!(
+                "[{}] [{}] {}",
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+                record.level(),
+                message
+            ))
+        })
+        .chain(std::io::stdout())
+        .apply()
 }

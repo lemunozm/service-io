@@ -1,6 +1,6 @@
 use service_io::connectors::{SmtpClient, UserStdin};
 use service_io::engine::Engine;
-use service_io::services::Echo;
+use service_io::services::{Echo, PublicIp};
 
 use clap::Parser;
 
@@ -38,6 +38,7 @@ async fn main() {
                 .sender_name(cli.sender_name),
         )
         .add_service("s-echo", Echo)
+        .add_service("s-public-ip", PublicIp)
         .run()
         .await;
 }

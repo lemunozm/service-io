@@ -12,6 +12,10 @@ native-tls = "0.2.8"
 mailparse = "0.13"
 log = "0.4"
 lettre = { version = "0.10.0-rc.4", features = ["smtp-transport", "tokio1-native-tls", "builder"] }
+public-ip = "0.2"
 
 [dev-dependencies]
 clap = { version = "3.1", features = ["derive", "cargo"] }
+clap-verbosity-flag = "1.0"
+fern = "0.5"
+chrono = "0.4"
