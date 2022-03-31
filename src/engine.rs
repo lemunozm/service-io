@@ -29,11 +29,13 @@ impl ServiceHandle {
         };
 
         if allowed {
+            let user = message.user.clone();
             let service_name = message.service_name.clone();
             let args = message.args.join(" ");
             match self.input_sender.send(message).await {
                 Ok(()) => log::info!(
-                    "Processing message for service '{}' with args '{}'",
+                    "Processing message from '{}' for service '{}' with args '{}'",
+                    user,
                     service_name,
                     args
                 ),
@@ -133,8 +135,9 @@ impl Engine {
                     if allowed {
                         match services.get(&message.service_name) {
                             Some(handle) => handle.process_message(message).await,
-                            None => log::warn!(
-                                "Drop Message for unknown service '{}'",
+                            None => log::trace!(
+                                "Drop Message from {} for unknown service '{}'",
+                                message.user,
                                 message.service_name
                             ),
                         }
@@ -276,12 +279,12 @@ mod tests {
             Engine::default()
                 .input(input_receiver)
                 .output(output_sender)
-                .add_service("s-echo", EchoOnce)
+                .add_service("s-test", EchoOnce)
                 .run()
                 .await;
         });
 
-        let message = build_message("user_0", "s-echo");
+        let message = build_message("user_0", "s-test");
         input_sender.send(message.clone()).await.unwrap();
         assert_eq!(Some(message), output_receiver.recv().await);
 
@@ -298,12 +301,12 @@ mod tests {
                 .input(input_receiver)
                 .output(output_sender)
                 .map_input(util::service_name_first_char_to_lowercase)
-                .add_service("s-echo", EchoOnce)
+                .add_service("s-test", EchoOnce)
                 .run()
                 .await;
         });
 
-        let message = build_message("user_0", "S-echo");
+        let message = build_message("user_0", "S-test");
         input_sender.send(message.clone()).await.unwrap();
         assert_eq!(
             Some(util::service_name_first_char_to_lowercase(message)),
@@ -311,6 +314,28 @@ mod tests {
         );
 
         task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn echo_with_input_filtering() {
+        let (input_sender, input_receiver) = mpsc::channel(32);
+        let (output_sender, mut output_receiver) = mpsc::channel(32);
+
+        tokio::spawn(async move {
+            Engine::default()
+                .input(input_receiver)
+                .output(output_sender)
+                .filter_input(|message| !message.service_name.starts_with("s-"))
+                .add_service("s-test", EchoOnce)
+                .run()
+                .await;
+        });
+
+        let message = build_message("user_0", "s-test");
+        input_sender.send(message.clone()).await.unwrap();
+        assert!(timeout(Duration::from_millis(100), output_receiver.recv())
+            .await
+            .is_err());
     }
 
     #[tokio::test]
@@ -338,7 +363,7 @@ mod tests {
             Engine::default()
                 .input(input_receiver)
                 .output(output_sender)
-                .add_service("s-echo", EchoOnce)
+                .add_service("s-test", EchoOnce)
                 .run()
                 .await;
         });
@@ -359,18 +384,18 @@ mod tests {
             Engine::default()
                 .input(input_receiver)
                 .output(output_sender)
-                .add_service_for("s-echo", EchoOnce, ["user_allowed"])
+                .add_service_for("s-test", EchoOnce, ["user_allowed"])
                 .run()
                 .await;
         });
 
-        let message = build_message("user_not_allowed", "s-echo");
+        let message = build_message("user_not_allowed", "s-test");
         input_sender.send(message.clone()).await.unwrap();
         assert!(timeout(Duration::from_millis(100), output_receiver.recv())
             .await
             .is_err());
 
-        let message = build_message("user_allowed", "s-echo");
+        let message = build_message("user_allowed", "s-test");
         input_sender.send(message.clone()).await.unwrap();
         assert_eq!(Some(message), output_receiver.recv().await);
 

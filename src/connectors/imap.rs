@@ -96,6 +96,11 @@ fn read_inbox<T: Read + Write>(session: &mut Session<T>) -> Result<Option<Messag
         session.expunge()?;
 
         if let Some(body) = email.body() {
+            log::trace!(
+                "Raw email:\n{}",
+                std::str::from_utf8(body).unwrap_or("No utf8")
+            );
+
             match mailparse::parse_mail(body) {
                 Ok(parsed) => return Ok(Some(email_to_message(parsed))),
                 Err(err) => log::error!("{}", err),
