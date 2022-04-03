@@ -147,6 +147,6 @@ fn email_to_message(email: ParsedMail) -> Message {
         service_name: subject_args.next().unwrap_or_default(),
         args: subject_args.collect(),
         body,
-        files: files,
+        attached_data: files,
     }
 }

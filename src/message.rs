@@ -30,7 +30,7 @@ pub struct Message {
 
     /// Attached content of the message.
     /// Each service implementation will understand these values in their own way.
-    pub files: HashMap<String, Vec<u8>>,
+    pub attached_data: HashMap<String, Vec<u8>>,
 }
 
 impl Message {
@@ -69,9 +69,12 @@ impl Message {
         self
     }
 
-    /// Set files for the message
-    pub fn files<S: Into<String>>(mut self, files: impl IntoIterator<Item = (S, Vec<u8>)>) -> Self {
-        self.files = files
+    /// Set attached data for the message
+    pub fn attach<S: Into<String>>(
+        mut self,
+        attached: impl IntoIterator<Item = (S, Vec<u8>)>,
+    ) -> Self {
+        self.attached_data = attached
             .into_iter()
             .map(|(name, data)| (name.into(), data))
             .collect();

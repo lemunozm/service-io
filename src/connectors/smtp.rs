@@ -74,7 +74,7 @@ fn message_to_email(message: Message, from: Mailbox) -> Option<lettre::Message> 
         .ok()?;
 
     let single_parts = message
-        .files
+        .attached_data
         .into_iter()
         .map(|(filename, filebody)| {
             Some(

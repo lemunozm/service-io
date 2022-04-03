@@ -300,7 +300,7 @@ mod tests {
             service_name: service.into(),
             args: vec!["arg0".into(), "arg1".into()],
             body: "abcd".into(),
-            files: [
+            attached_data: [
                 ("file1".to_string(), b"1234".to_vec()),
                 ("file2".to_string(), b"5678".to_vec()),
             ]
