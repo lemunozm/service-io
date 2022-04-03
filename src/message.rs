@@ -5,6 +5,22 @@ use std::collections::HashMap;
 /// Common data shared among input/output/services.
 /// This is the language `service-io` talk.
 /// Each input/output/service understand this structure.
+///
+/// # Example
+/// ```rust
+/// use service_io::message::Message;
+///
+/// let request = Message::default()
+///     .user("user_01")
+///     .service_name("my_service")
+///     .args(["arg0", "arg1", "arg2", "this is arg3"])
+///     .body("body of the message")
+///     .attach([
+///         ("file1.txt", b"content data".to_vec()),
+///         ("file2.txt", b"1234".to_vec())
+///     ]);
+/// ```
+///
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Message {
     /// The user this message is related to.
@@ -37,6 +53,25 @@ impl Message {
     /// Sugar to perform a response of a received message.
     /// Creates an empty message with same [`Message::user`]
     /// and [`Message::service_name`] as the passed message.
+    ///
+    /// # Example
+    /// ```rust
+    /// use service_io::message::Message;
+    ///
+    /// let request = Message::default()
+    ///     .user("user_01")
+    ///     .service_name("my_service")
+    ///     .body("1234");
+    ///
+    /// let response = Message::response(&request);
+    ///
+    /// // Name and service_name are copied
+    /// assert_eq!(request.user, response.user);
+    /// assert_eq!(request.service_name, response.service_name);
+    ///
+    /// // But other fields as body are not copied.
+    /// assert_ne!(request.body, response.body);
+    /// ```
     pub fn response(message: &Message) -> Message {
         Message {
             user: message.user.clone(),

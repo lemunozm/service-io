@@ -10,8 +10,7 @@ use tokio::{
     task::{JoinError, JoinHandle},
 };
 
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 struct ServiceConfig {
     name: String,
@@ -20,8 +19,8 @@ struct ServiceConfig {
 }
 
 struct ServiceHandle {
-    whitelist: Option<HashSet<String>>,
     input_sender: mpsc::Sender<Message>,
+    whitelist: Option<HashSet<String>>,
 }
 
 impl ServiceHandle {
@@ -54,13 +53,42 @@ impl ServiceHandle {
     }
 }
 
-/// Main entity of service-io.
+/// Main entity of `service-io`.
 ///
 /// It defines the following schema that runs asynchronously: `Input -> n Services -> Output`
 ///
 /// A message received by the [`InputConnector`] will be sent to a specific [`Service`] based on the
 /// [`Message::service_name`]. The [`Service`] will process the message and optionally can sent any
 /// number of output messages that will be delivered by the [`OutputConnector`].
+///
+/// # Example
+/// ```rust no_run
+/// use service_io::connectors::{ImapClient, SmtpClient};
+/// use service_io::engine::Engine;
+/// use service_io::services::{Echo, Alarm};
+///
+/// #[tokio::main]
+/// async fn main() {
+///     Engine::default()
+///         .input(
+///             ImapClient::default()
+///                 .domain("imap.domain.com")
+///                 .email("service@domain.com")
+///                 .password("1234"),
+///         )
+///         .output(
+///             SmtpClient::default()
+///                 .domain("smtp.domain.com")
+///                 .email("service@domain.com")
+///                 .password("1234"),
+///         )
+///         .add_service("s-echo", Echo)
+///         .add_service("s-alarm", Alarm)
+///         .run()
+///         .await;
+/// }
+/// ```
+///
 #[derive(Default)]
 pub struct Engine {
     input: Option<Box<dyn InputConnector + Send>>,
@@ -95,6 +123,36 @@ impl Engine {
 
     /// Maps the message processed by the input connector into other message before checking the
     /// destination service the message is for.
+    ///
+    /// # Example
+    /// ```rust no_run
+    /// use service_io::connectors::{ImapClient, SmtpClient};
+    /// use service_io::engine::Engine;
+    /// use service_io::services::Echo;
+    /// use service_io::message::util;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     Engine::default()
+    ///         .input(
+    ///             ImapClient::default()
+    ///                 .domain("imap.domain.com")
+    ///                 .email("service@domain.com")
+    ///                 .password("1234"),
+    ///         )
+    ///         .output(
+    ///             SmtpClient::default()
+    ///                 .domain("smtp.domain.com")
+    ///                 .email("service@domain.com")
+    ///                 .password("1234"),
+    ///         )
+    ///         // Now, if the user writes "S-echo", it will found the service "s-echo"
+    ///         .map_input(util::service_name_first_char_to_lowercase)
+    ///         .add_service("s-echo", Echo)
+    ///         .run()
+    ///         .await;
+    /// }
+    /// ```
     pub fn map_input(mut self, mapping: impl Fn(Message) -> Message + Send + 'static) -> Engine {
         self.input_mapping = Some(Box::new(mapping));
         self
@@ -102,6 +160,35 @@ impl Engine {
 
     /// Allow or disallow passing the message to the service based of the message itself.
     /// This filter method is applied just after the mapping method set by [`Engine::map_input`].
+    ///
+    /// # Example
+    /// ```rust no_run
+    /// use service_io::connectors::{ImapClient, SmtpClient};
+    /// use service_io::engine::Engine;
+    /// use service_io::services::Echo;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     Engine::default()
+    ///         .input(
+    ///             ImapClient::default()
+    ///                 .domain("imap.domain.com")
+    ///                 .email("service@domain.com")
+    ///                 .password("1234"),
+    ///         )
+    ///         .output(
+    ///             SmtpClient::default()
+    ///                 .domain("smtp.domain.com")
+    ///                 .email("service@domain.com")
+    ///                 .password("1234"),
+    ///         )
+    ///         // Now, only input messages from gmail are allowed
+    ///         .filter_input(|message| message.user.ends_with("gmail.com"))
+    ///         .add_service("s-echo", Echo)
+    ///         .run()
+    ///         .await;
+    /// }
+    /// ```
     pub fn filter_input(mut self, filtering: impl Fn(&Message) -> bool + Send + 'static) -> Engine {
         self.input_filtering = Some(Box::new(filtering));
         self
@@ -131,6 +218,35 @@ impl Engine {
     /// Similar to [`Engine::add_service()`] but service only allow receive message for a whitelist of users.
     /// If the [`Message::user`] of the incoming message not belong to that list, the message is
     /// discarded.
+    ///
+    /// # Example
+    /// ```rust no_run
+    /// use service_io::connectors::{ImapClient, SmtpClient};
+    /// use service_io::engine::Engine;
+    /// use service_io::services::Process;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     Engine::default()
+    ///         .input(
+    ///             ImapClient::default()
+    ///                 .domain("imap.domain.com")
+    ///                 .email("service@domain.com")
+    ///                 .password("1234"),
+    ///         )
+    ///         .output(
+    ///             SmtpClient::default()
+    ///                 .domain("smtp.domain.com")
+    ///                 .email("service@domain.com")
+    ///                 .password("1234"),
+    ///         )
+    ///         // We only want messages comming from the admin user
+    ///         // to go to s-process service to avoid attacks.
+    ///         .add_service_for("s-process", Process, ["admin@domain.com"])
+    ///         .run()
+    ///         .await;
+    /// }
+    /// ```
     pub fn add_service_for<S: Into<String>>(
         mut self,
         name: impl Into<String>,
