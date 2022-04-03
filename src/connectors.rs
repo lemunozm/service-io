@@ -1,3 +1,5 @@
+//! Default connectors comming with `service-io`.
+
 mod mpsc;
 
 mod stdin;

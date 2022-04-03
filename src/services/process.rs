@@ -5,7 +5,6 @@ use crate::message::Message;
 use async_trait::async_trait;
 use tokio::process::Command;
 
-#[derive(Clone)]
 pub struct Process;
 
 #[async_trait]

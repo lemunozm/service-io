@@ -4,7 +4,6 @@ use crate::message::Message;
 
 use async_trait::async_trait;
 
-#[derive(Clone)]
 pub struct PublicIp;
 
 #[async_trait]

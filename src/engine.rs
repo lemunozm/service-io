@@ -1,3 +1,6 @@
+//! Main entity of `service-io`.
+//! Connects input, output, and services and run them.
+
 use crate::channel::{ClosedChannel, Receiver, Sender};
 use crate::interface::{InputConnector, OutputConnector, Service};
 use crate::message::Message;
@@ -51,6 +54,13 @@ impl ServiceHandle {
     }
 }
 
+/// Main entity of service-io.
+///
+/// It defines the following schema that runs asynchronously: `Input -> n Services -> Output`
+///
+/// A message received by the [`InputConnector`] will be sent to a specific [`Service`] based on the
+/// [`Message::service_name`]. The [`Service`] will process the message and optionally can sent any
+/// number of output messages that will be delivered by the [`OutputConnector`].
 #[derive(Default)]
 pub struct Engine {
     input: Option<Box<dyn InputConnector + Send>>,
@@ -61,26 +71,50 @@ pub struct Engine {
 }
 
 impl Engine {
+    /// Set an input connector for this engine that will be run after calling [`Engine::run()`].
+    ///
+    /// Default connectors can be found in [`connectors`].
+    /// This call is mandatory in order to run the engine.
+    ///
+    /// [`connectors`]: crate::connectors
     pub fn input(mut self, input: impl InputConnector + Send + 'static) -> Engine {
         self.input = Some(Box::new(input));
         self
     }
 
+    /// Set an output connector for this engine that will be run after calling [`Engine::run()`].
+    ///
+    /// Default connectors can be found in [`connectors`].
+    /// This call is mandatory in order to run the engine.
+    ///
+    /// [`connectors`]: crate::connectors
     pub fn output(mut self, output: impl OutputConnector + Send + 'static) -> Engine {
         self.output = Some(Box::new(output));
         self
     }
 
+    /// Maps the message processed by the input connector into other message before checking the
+    /// destination service the message is for.
     pub fn map_input(mut self, mapping: impl Fn(Message) -> Message + Send + 'static) -> Engine {
         self.input_mapping = Some(Box::new(mapping));
         self
     }
 
+    /// Allow or disallow passing the message to the service based of the message itself.
+    /// This filter method is applied just after the mapping method set by [`Engine::map_input`].
     pub fn filter_input(mut self, filtering: impl Fn(&Message) -> bool + Send + 'static) -> Engine {
         self.input_filtering = Some(Box::new(filtering));
         self
     }
 
+    /// Add a service to the engine registered with a `name`. If the [`Message::service_name`] value
+    /// matches with this `name`, the message will be redirected to the service.
+    ///
+    /// Note that the service will not run until you call [`Engine::run()`]
+    ///
+    /// Default services can be found in [`services`]
+    ///
+    /// [`services`]: crate::services
     pub fn add_service(
         mut self,
         name: impl Into<String>,
@@ -94,6 +128,9 @@ impl Engine {
         self
     }
 
+    /// Similar to [`Engine::add_service()`] but service only allow receive message for a whitelist of users.
+    /// If the [`Message::user`] of the incoming message not belong to that list, the message is
+    /// discarded.
     pub fn add_service_for<S: Into<String>>(
         mut self,
         name: impl Into<String>,
@@ -108,6 +145,8 @@ impl Engine {
         self
     }
 
+    /// Run asynchronously the input, output and all services configured for this engine.
+    /// The engine will run until all services finished or the input/output connector finalizes.
     pub async fn run(self) {
         log::info!("Initializing engine...");
 

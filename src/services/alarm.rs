@@ -7,7 +7,6 @@ use tokio::time;
 
 use std::time::Duration;
 
-#[derive(Clone)]
 pub struct Alarm;
 
 #[async_trait]

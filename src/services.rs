@@ -1,3 +1,5 @@
+//! Default services comming with `service-io`.
+
 mod echo;
 pub use echo::Echo;
 
