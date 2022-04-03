@@ -55,7 +55,7 @@ impl ImapClient {
 
 #[async_trait]
 impl InputConnector for ImapClient {
-    async fn run(mut self: Box<Self>, sender: Sender<Message>) -> Result<(), ClosedChannel> {
+    async fn run(mut self: Box<Self>, sender: Sender) -> Result<(), ClosedChannel> {
         tokio::task::spawn_blocking(move || {
             let mut session = self.connect().unwrap();
             loop {
@@ -65,7 +65,7 @@ impl InputConnector for ImapClient {
                     Ok(Some(message)) => sender.blocking_send(message)?,
                     Ok(None) => (),
                     Err(err) => {
-                        log::error!("{}", err);
+                        log::warn!("{}", err);
                         session = match self.connect() {
                             Ok(session) => {
                                 log::info!("Connection restored");

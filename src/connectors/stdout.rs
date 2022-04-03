@@ -1,6 +1,5 @@
 use crate::channel::{ClosedChannel, Receiver};
 use crate::interface::OutputConnector;
-use crate::message::Message;
 
 use tokio::io::AsyncWriteExt;
 
@@ -10,10 +9,7 @@ pub struct DebugStdout;
 
 #[async_trait]
 impl OutputConnector for DebugStdout {
-    async fn run(
-        mut self: Box<Self>,
-        mut receiver: Receiver<Message>,
-    ) -> Result<(), ClosedChannel> {
+    async fn run(mut self: Box<Self>, mut receiver: Receiver) -> Result<(), ClosedChannel> {
         loop {
             let message = receiver.recv().await?;
             tokio::io::stdout()

@@ -41,10 +41,7 @@ impl SmtpClient {
 
 #[async_trait]
 impl OutputConnector for SmtpClient {
-    async fn run(
-        mut self: Box<Self>,
-        mut receiver: Receiver<Message>,
-    ) -> Result<(), ClosedChannel> {
+    async fn run(mut self: Box<Self>, mut receiver: Receiver) -> Result<(), ClosedChannel> {
         let address = self.email.parse::<Address>().unwrap();
         let user = address.user().to_string();
         let credentials = Credentials::new(user, self.password.into());

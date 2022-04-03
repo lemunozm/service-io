@@ -286,8 +286,8 @@ mod tests {
     impl Service for EchoOnce {
         async fn run(
             self: Box<Self>,
-            mut input: Receiver<Message>,
-            output: Sender<Message>,
+            mut input: Receiver,
+            output: Sender,
         ) -> Result<(), ClosedChannel> {
             let message = input.recv().await?;
             output.send(message).await

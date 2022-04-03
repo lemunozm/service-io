@@ -1,11 +1,10 @@
-//! Traits for building [`InputConnector`], [`OutputConnector`], and [`Service`].
+//! Traits for building [`InputConnector`], [`OutputConnector`], and [`Service`]
 //!
 //! [`InputConnector`]: interface::InputConnector
 //! [`OutputConnector`]: interface::OutputConnector
 //! [`Service`]: interface::Service
 
 use crate::channel::{ClosedChannel, Receiver, Sender};
-use crate::message::Message;
 
 use async_trait::async_trait;
 
@@ -21,7 +20,7 @@ use async_trait::async_trait;
 /// [`connectors`]: crate::connectors
 #[async_trait]
 pub trait InputConnector {
-    async fn run(self: Box<Self>, sender: Sender<Message>) -> Result<(), ClosedChannel>;
+    async fn run(self: Box<Self>, sender: Sender) -> Result<(), ClosedChannel>;
 }
 
 /// Trait to implement an output connector.
@@ -36,7 +35,7 @@ pub trait InputConnector {
 /// [`connectors`]: crate::connectors
 #[async_trait]
 pub trait OutputConnector {
-    async fn run(self: Box<Self>, receiver: Receiver<Message>) -> Result<(), ClosedChannel>;
+    async fn run(self: Box<Self>, receiver: Receiver) -> Result<(), ClosedChannel>;
 }
 
 /// Trait to implement a Service.
@@ -53,9 +52,5 @@ pub trait OutputConnector {
 /// [`services`]: crate::services
 #[async_trait]
 pub trait Service {
-    async fn run(
-        self: Box<Self>,
-        input: Receiver<Message>,
-        output: Sender<Message>,
-    ) -> Result<(), ClosedChannel>;
+    async fn run(self: Box<Self>, input: Receiver, output: Sender) -> Result<(), ClosedChannel>;
 }

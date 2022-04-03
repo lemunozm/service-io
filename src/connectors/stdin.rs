@@ -10,7 +10,7 @@ pub struct UserStdin<N>(pub N);
 
 #[async_trait]
 impl<N: Into<String> + Send> InputConnector for UserStdin<N> {
-    async fn run(mut self: Box<Self>, sender: Sender<Message>) -> Result<(), ClosedChannel> {
+    async fn run(mut self: Box<Self>, sender: Sender) -> Result<(), ClosedChannel> {
         let user_name = self.0.into();
         loop {
             let line =

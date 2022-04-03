@@ -13,8 +13,8 @@ pub struct Alarm;
 impl Service for Alarm {
     async fn run(
         self: Box<Self>,
-        mut input: Receiver<Message>,
-        output: Sender<Message>,
+        mut input: Receiver,
+        output: Sender,
     ) -> Result<(), ClosedChannel> {
         loop {
             let request = input.recv().await?;

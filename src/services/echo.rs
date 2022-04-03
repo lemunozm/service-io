@@ -1,6 +1,5 @@
 use crate::channel::{ClosedChannel, Receiver, Sender};
 use crate::interface::Service;
-use crate::message::Message;
 
 use async_trait::async_trait;
 
@@ -10,8 +9,8 @@ pub struct Echo;
 impl Service for Echo {
     async fn run(
         self: Box<Self>,
-        mut input: Receiver<Message>,
-        output: Sender<Message>,
+        mut input: Receiver,
+        output: Sender,
     ) -> Result<(), ClosedChannel> {
         loop {
             let message = input.recv().await?;
