@@ -6,6 +6,11 @@ use async_trait::async_trait;
 
 use std::io::{self, BufRead};
 
+/// Reads a line from the stdin.
+/// The service accepts a parameter that corresponds with the user.
+/// The first word of the line is interpreted as the service name.
+/// The following spaced-separated words are the arguments.
+/// Neither body nor attach fields are populated.
 pub struct UserStdin<N>(pub N);
 
 #[async_trait]

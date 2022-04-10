@@ -9,6 +9,10 @@ use lettre::{Address, AsyncSmtpTransport, AsyncTransport, Tokio1Executor};
 
 use async_trait::async_trait;
 
+/// Output connector that acts as a SMTP client
+/// The service sends emails to the SMTP server.
+/// The service name is added as first word of the subject following by space.
+/// The arguments are added as a words to the subject separated by spaces.
 #[derive(Default, Clone)]
 pub struct SmtpClient {
     smtp_domain: String,
@@ -33,6 +37,7 @@ impl SmtpClient {
         self
     }
 
+    /// Name alias for the email
     pub fn sender_name(mut self, value: impl IntoOption<String>) -> Self {
         self.sender_name = value.into_some();
         self

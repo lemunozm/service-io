@@ -12,6 +12,12 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
+/// Input connector that acts as an IMAP client
+/// The service fetchs and removes the email from the server, and transforms it to messages.
+/// The first word of the subjet is interpreted as the service name.
+/// The following spaced-separated words are the arguments.
+///
+/// This connector makes attempts to the ICMP server each [`ImapClient::polling_time`] seconds.
 #[derive(Default, Clone)]
 pub struct ImapClient {
     imap_domain: String,

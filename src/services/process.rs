@@ -7,7 +7,7 @@ use tokio::process::Command;
 
 /// Allow to run any process.
 /// Each arg of the message is interpreted as a process arg, being arg0 the name of the process.
-/// The stdout of the process once finalized will be returned as message body.
+/// The stdout of the process once finalized will be returned as a message body.
 pub struct Process;
 
 #[async_trait]

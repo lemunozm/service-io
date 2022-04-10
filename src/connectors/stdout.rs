@@ -5,6 +5,7 @@ use tokio::io::AsyncWriteExt;
 
 use async_trait::async_trait;
 
+/// Print the message to the stdout.
 pub struct DebugStdout;
 
 #[async_trait]
