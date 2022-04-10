@@ -104,7 +104,7 @@ using the IMAP and SMTP protocols to handle the emails as requests / responses a
 
 `service-io` helps in this context.
 Run locally an instance of `service-io` with IMAP/SMTP connectors.
-The IMAP connector will fetch periodically the emails your clients sends,
+The IMAP connector will periodically fetch the emails your clients sends,
 then your services will process those emails and generate a response,
 and finally the SMTP connector will deliver the response emails back to the user.
 
