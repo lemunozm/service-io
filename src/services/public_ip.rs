@@ -4,6 +4,8 @@ use crate::message::Message;
 
 use async_trait::async_trait;
 
+/// Serve the public IP of the server.
+/// No args are required.
 pub struct PublicIp;
 
 #[async_trait]

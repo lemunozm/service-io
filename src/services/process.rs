@@ -5,6 +5,9 @@ use crate::message::Message;
 use async_trait::async_trait;
 use tokio::process::Command;
 
+/// Allow to run any process.
+/// Each arg of the message is interpreted as a process arg, being arg0 the name of the process.
+/// The stdout of the process once finalized will be returned as message body.
 pub struct Process;
 
 #[async_trait]

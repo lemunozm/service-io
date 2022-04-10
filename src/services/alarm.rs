@@ -7,6 +7,8 @@ use tokio::time;
 
 use std::time::Duration;
 
+/// Allow to create alarms given a name and a time in minutes.
+/// Once the time is over, a response is generated.
 pub struct Alarm;
 
 #[async_trait]

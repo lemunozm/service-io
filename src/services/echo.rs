@@ -3,6 +3,7 @@ use crate::interface::Service;
 
 use async_trait::async_trait;
 
+/// Returns the same received message without modifications
 pub struct Echo;
 
 #[async_trait]

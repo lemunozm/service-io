@@ -43,25 +43,6 @@ Add the following to your `Cargo.toml`
 service-io = "0.1"
 ```
 
-## No hosting server use-case <span id="no-hosting-server"/>
-If you want to offer some custom service that uses *custom server code*
-you are forced to pay and maintain a hosting server,
-even if the service you are offering is eventual or does not use many resources.
-
-To solve this problem, you can use the already existent email infrastructure
-using the IMAP and SMTP protocols to handle the emails as requests / responses and link them with your services.
-
-`service-io` helps in this context.
-Run locally an instance of `service-io` with IMAP/SMTP connectors.
-The IMAP connector will fetch periodically the emails your clients sends,
-then your services will process those emails and generate a response,
-and finally the SMTP connector will deliver the response emails back to the user.
-
-Anyone from any device with an email client can interact with your local server deployment.
-There is **no hosting maintenance** and **no front-end app development**.
-
-// Image
-
 ## Example
 Simply send an email with `public-ip` in the subject and you will obtain a response with your public ip!
 
@@ -100,7 +81,10 @@ Check the [Engine](https://docs.rs/message-io/latest/service_io/interface/index.
 for additional methods as input mapping/filters or adding whitelists to your services.
 
 Test it yourself with [examples/email_server.rs](examples/email_server.rs).
-Run `cargo run --example email_server -- --help` to see all config options.
+Run the following to see all config options.
+```sh
+cargo run --example email_server -- --help
+```
 
 ## Configuring a gmail account to use with `service-io`.
 For use `service-io` with IMAP and SMTP connectors with gmail you need to configure some points
@@ -109,6 +93,27 @@ of your gmail account:
 - Enable [unsecure app access](https://support.google.com/accounts/answer/6010255?hl=en)
   to allow login with password from an app.
   (pending work to make it available through *oauth2* and avoid this point).
+
+## No hosting server use-case <span id="no-hosting-server"/>
+If you want to offer some custom service that uses *custom server code*
+you are forced to pay and maintain a hosting server,
+even if the service you are offering is eventual or does not use many resources.
+
+To solve this problem, you can use the already existent email infrastructure
+using the IMAP and SMTP protocols to handle the emails as requests / responses and link them with your services.
+
+`service-io` helps in this context.
+Run locally an instance of `service-io` with IMAP/SMTP connectors.
+The IMAP connector will fetch periodically the emails your clients sends,
+then your services will process those emails and generate a response,
+and finally the SMTP connector will deliver the response emails back to the user.
+
+Anyone from any device with an email client can interact with your local server deployment.
+There is **no hosting maintenance** and **no front-end app development**.
+
+<p align="center">
+  <img src="images/no-hosting-server.png" title="schema">
+</p>
 
 ## Contribute
 - *Have you implemented a **service** or **connector**?*
