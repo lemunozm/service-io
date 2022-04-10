@@ -1,7 +1,18 @@
 [package]
 name = "service-io"
 version = "0.1.0"
+authors = ["lemunozm <lemunozm@gmail.com>"]
 edition = "2021"
+readme = "README.md"
+license = "Apache-2.0"
+description = "Build your service-server fast, easy (and without hosting!)"
+homepage = "https://github.com/lemunozm/service-io/"
+repository = "https://github.com/lemunozm/service-io/"
+keywords = ["email", "message", "service", "server", "async"]
+categories = ["asynchronous", "email"]
+
+[badges]
+maintenance = { status = "actively-developed" }
 
 [dependencies]
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "io-std", "io-util", "rt-multi-thread"] }
@@ -18,3 +29,4 @@ clap = { version = "3.1", features = ["derive", "cargo"] }
 clap-verbosity-flag = "1.0"
 fern = "0.6"
 chrono = "0.4"
+doc-comment = "0.3"
