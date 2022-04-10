@@ -1,3 +1,8 @@
+[![](https://img.shields.io/crates/v/service-io)](https://crates.io/crates/service-io)
+[![](https://img.shields.io/docsrs/service-io)](https://docs.rs/service-io)
+[![](https://img.shields.io/crates/l/service-io)](https://www.apache.org/licenses/LICENSE-2.0.txt)
+[![](https://img.shields.io/badge/bymeacoffee-donate-yellow)](https://www.buymeacoffee.com/lemunozm)
+
 <p align="center">
   <img src="images/title.png" title="service-io">
 </p>
@@ -11,31 +16,31 @@
 
 One of the main use-cases is to offer services [without a hosting server](#no-hosting-server).
 
-### How it works?
+## How it works?
 <p align="center">
   <img src="images/library-schema.png" title="schema">
 </p>
 
 All of them, **inputs** / **outputs** and **services** "speak" the same language:
-the [`Message`](https://docs.rs/message-io/latest/service_io/message/Message.html) type.
+the [`Message`](https://docs.rs/service-io/latest/service_io/message/struct.Message.html) type.
 
-Inputs obtain and transform input data into `Message`.
-Outputs transform a `Message` into output data and deliver it.
+Inputs obtain and transform input data into a `Message`.
 Services receive `Message`s and generate other `Message`s usually doing some kind of processing.
+Outputs transform a `Message` into output data and deliver it.
 
-Check the current built-in [connectors](https://docs.rs/message-io/latest/service_io/connectors/index.html)
-and [services](https://docs.rs/message-io/latest/service_io/services/index.html).
+Check the current built-in [connectors](https://docs.rs/service-io/latest/service_io/connectors/index.html)
+and [services](https://docs.rs/service-io/latest/service_io/services/index.html).
 
 ## Features
 - **Easy to use**. Running a server with a bunch of services with (really) few lines of code.
 - **Hostingless**. Run custom server code without hosting server using the existing email infrastructure
   using the IMAP/SMTP connectors.
 - **Scalable**. Create your own inputs/outputs/services implementing a trait with a single method.
-  [Check docs](https://docs.rs/message-io/latest/service_io/interface/index.html)
+  [Check docs](https://docs.rs/service-io/latest/service_io/interface/index.html)
 - **Multiplatform**. Run your local service-server in any computer you have.
 
 ## Getting Started
-- [API Docs](https://docs.rs/message-io/latest/service_io/)
+- [API Docs](https://docs.rs/service-io/latest/service_io/)
 - [Examples](examples)
 
 Add the following to your `Cargo.toml`
@@ -44,7 +49,8 @@ service-io = "0.1"
 ```
 
 ## Example
-Simply send an email with `public-ip` in the subject and you will obtain a response with your public ip!
+Simply send an email (as an example, to `services@domain.com`)
+with `public-ip` in the subject and you will obtain a response with your public ip!
 
 ```rust,no_run
 use service_io::engine::Engine;
@@ -74,10 +80,10 @@ async fn main() {
 
 Any email sent to `services@domain.com` will be interpreted as a request by the `ImapClient` connector.
 If the first word of the subject matches `public-ip`, the request will be processed by the `PublicIp` service.
-The service `PublicIp` will generate a response that `SmtpClient` will be delivered by email
-to the originator of the request email.
+The service `PublicIp` will generate a response that `SmtpClient` will be deliver by email
+to the remitter of the request email.
 
-Check the [Engine](https://docs.rs/message-io/latest/service_io/interface/index.html) type
+Check the [Engine](https://docs.rs/service-io/latest/service_io/engine/struct.Engine.html) type
 for additional methods as input mapping/filters or adding whitelists to your services.
 
 Test it yourself with [examples/email_server.rs](examples/email_server.rs).
@@ -92,7 +98,7 @@ of your gmail account:
 - Enable IMAP in account settings: Check this [Step 1](https://support.google.com/mail/answer/7126229?hl=en#zippy=%2Cpaso-comprueba-que-imap-est%C3%A9-activado%2Cstep-check-that-imap-is-turned-on).
 - Enable [unsecure app access](https://support.google.com/accounts/answer/6010255?hl=en)
   to allow login with password from an app.
-  (pending work to make it available through *oauth2* and avoid this point).
+  (Pending work to make it available through *oauth2* and avoid this point).
 
 ## No hosting server use-case <span id="no-hosting-server"/>
 If you want to offer some custom service that uses *custom server code*
@@ -120,5 +126,5 @@ There is **no hosting maintenance** and **no front-end app development**.
   If its functionallity is not private, share it with others!
   Make a *Pull Request* so everyone can use it :)
 
-- *Do you have any cool idea, found a bug or have any question/doubt?*
+- *Do you have any cool **idea**, found a **bug** or have any **question** or **doubt**?*
   Do not hesitate and open an issue!
