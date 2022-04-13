@@ -9,8 +9,8 @@
 
 `service-io` is a library to build servers that offering services with really little effort.
 
-1. Choose an input method
-2. Choose an output method.
+1. Choose an input connector.
+2. Choose an output connector.
 3. Choose your services.
 4. Run it!
 
@@ -21,15 +21,17 @@ One of the main use-cases is to offer services [without a hosting server](#no-ho
   <img src="images/library-schema.png" title="schema">
 </p>
 
-All of them, **inputs** / **outputs** and **services** "speak" the same language:
+All of them, **inputs**/**outputs** and **services** "speak" the same language:
 the [`Message`](https://docs.rs/service-io/latest/service_io/message/struct.Message.html) type.
 
 Inputs obtain and transform input data into a `Message`.
 Services receive `Message`s and generate other `Message`s usually doing some kind of processing.
 Outputs transform a `Message` into output data and deliver it.
 
-Check the current built-in [connectors](https://docs.rs/service-io/latest/service_io/connectors/index.html)
-and [services](https://docs.rs/service-io/latest/service_io/services/index.html).
+Check the current built-in input/output
+[connectors](https://docs.rs/service-io/latest/service_io/connectors/index.html)
+and
+[services](https://docs.rs/service-io/latest/service_io/services/index.html).
 
 ## Features
 - **Easy to use**. Running a server with a bunch of services with (really) few lines of code.
@@ -49,13 +51,17 @@ service-io = "0.1"
 ```
 
 ## Example
-Simply send an email (as an example, to `services@domain.com`)
-with `public-ip` in the subject and you will obtain a response with your public ip!
+Running this example in any of your home computer,
+and sending an email (as an example, to `services@domain.com`)
+with `public-ip` in the subject, you will obtain a response email with your home public IP!
+
+In a similar way, sending an email with `process ls -l` in the subject will return
+an email with the files of the folder used to run the example.
 
 ```rust,no_run
 use service_io::engine::Engine;
 use service_io::connectors::{ImapClient, SmtpClient};
-use service_io::services::PublicIp;
+use service_io::services::{PublicIp, Process};
 
 #[tokio::main]
 async fn main() {
@@ -72,7 +78,9 @@ async fn main() {
                 .email("services@domain.com")
                 .password("1234")
         )
-        .add_service("public-ip", PublicIp) // Add any other service you want
+        .add_service("public-ip", PublicIp)
+        .add_service("process", Process)
+        // Add any other service you want
         .run()
         .await;
 }
@@ -106,7 +114,7 @@ you are forced to pay and maintain a hosting server,
 even if the service you are offering is eventual or does not use many resources.
 
 To solve this problem, you can use the already existent email infrastructure
-using the IMAP and SMTP protocols to handle the emails as requests / responses and link them with your services.
+using the IMAP and SMTP protocols to handle the emails as requests/responses and link them with your services.
 
 `service-io` helps in this context.
 Run locally an instance of `service-io` with IMAP/SMTP connectors.
