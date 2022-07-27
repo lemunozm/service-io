@@ -63,7 +63,7 @@ impl ServiceHandle {
 ///
 /// # Example
 /// ```rust no_run
-/// use service_io::connectors::{ImapClient, SmtpClient};
+/// use service_io::connectors::{ImapClient, SmtpClient, imap};
 /// use service_io::engine::Engine;
 /// use service_io::services::{Echo, Alarm};
 ///
@@ -74,7 +74,7 @@ impl ServiceHandle {
 ///             ImapClient::default()
 ///                 .domain("imap.domain.com")
 ///                 .email("service@domain.com")
-///                 .password("1234"),
+///                 .access(imap::Access::Password("1234")),
 ///         )
 ///         .output(
 ///             SmtpClient::default()
@@ -126,7 +126,7 @@ impl Engine {
     ///
     /// # Example
     /// ```rust no_run
-    /// use service_io::connectors::{ImapClient, SmtpClient};
+    /// use service_io::connectors::{ImapClient, SmtpClient, imap};
     /// use service_io::engine::Engine;
     /// use service_io::services::Echo;
     /// use service_io::message::util;
@@ -138,7 +138,7 @@ impl Engine {
     ///             ImapClient::default()
     ///                 .domain("imap.domain.com")
     ///                 .email("service@domain.com")
-    ///                 .password("1234"),
+    ///                 .access(imap::Access::Password("1234")),
     ///         )
     ///         .output(
     ///             SmtpClient::default()
@@ -163,7 +163,7 @@ impl Engine {
     ///
     /// # Example
     /// ```rust no_run
-    /// use service_io::connectors::{ImapClient, SmtpClient};
+    /// use service_io::connectors::{ImapClient, SmtpClient, imap};
     /// use service_io::engine::Engine;
     /// use service_io::services::Echo;
     ///
@@ -174,7 +174,7 @@ impl Engine {
     ///             ImapClient::default()
     ///                 .domain("imap.domain.com")
     ///                 .email("service@domain.com")
-    ///                 .password("1234"),
+    ///                 .access(imap::Access::Password("1234")),
     ///         )
     ///         .output(
     ///             SmtpClient::default()
@@ -221,7 +221,7 @@ impl Engine {
     ///
     /// # Example
     /// ```rust no_run
-    /// use service_io::connectors::{ImapClient, SmtpClient};
+    /// use service_io::connectors::{ImapClient, SmtpClient, imap};
     /// use service_io::engine::Engine;
     /// use service_io::services::Process;
     ///
@@ -232,7 +232,7 @@ impl Engine {
     ///             ImapClient::default()
     ///                 .domain("imap.domain.com")
     ///                 .email("service@domain.com")
-    ///                 .password("1234"),
+    ///                 .access(imap::Access::Password("1234")),
     ///         )
     ///         .output(
     ///             SmtpClient::default()

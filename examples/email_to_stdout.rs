@@ -1,4 +1,4 @@
-use service_io::connectors::{DebugStdout, ImapClient};
+use service_io::connectors::{imap, DebugStdout, ImapClient};
 use service_io::engine::Engine;
 use service_io::message::util;
 use service_io::services::{Alarm, Echo, Process, PublicIp};
@@ -35,7 +35,7 @@ async fn main() {
             ImapClient::default()
                 .domain(cli.imap_domain)
                 .email(cli.email)
-                .password(cli.password)
+                .access(imap::Access::Password(cli.password))
                 .polling_time(Duration::from_secs(cli.polling_time)),
         )
         .output(DebugStdout)

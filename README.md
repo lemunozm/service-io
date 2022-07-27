@@ -60,7 +60,7 @@ an email with the files of the folder used to run the example.
 
 ```rust,no_run
 use service_io::engine::Engine;
-use service_io::connectors::{ImapClient, SmtpClient};
+use service_io::connectors::{ImapClient, SmtpClient, imap};
 use service_io::services::{PublicIp, Process};
 
 #[tokio::main]
@@ -70,7 +70,7 @@ async fn main() {
             ImapClient::default()
                 .domain("imap.domain.com")
                 .email("services@domain.com")
-                .password("1234")
+                .access(imap::Access::Password("1234")),
         )
         .output(
             SmtpClient::default()

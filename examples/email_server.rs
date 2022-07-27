@@ -1,4 +1,4 @@
-use service_io::connectors::{ImapClient, SmtpClient};
+use service_io::connectors::{imap, ImapClient, SmtpClient};
 use service_io::engine::Engine;
 use service_io::message::util;
 use service_io::services::{Alarm, Echo, Process, PublicIp};
@@ -47,8 +47,8 @@ async fn main() {
         .input(
             ImapClient::default()
                 .domain(cli.imap_domain)
-                .email(cli.email.clone())
-                .password(cli.password.clone())
+                .email(&cli.email)
+                .access(imap::Access::Password(&cli.password))
                 .polling_time(Duration::from_secs(cli.polling_time)),
         )
         .output(
