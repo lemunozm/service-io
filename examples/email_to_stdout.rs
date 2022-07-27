@@ -18,8 +18,11 @@ struct Cli {
     #[clap(long)]
     email: String,
 
-    #[clap(long)]
+    #[clap(long, default_value = "", conflicts_with = "access-token")]
     password: String,
+
+    #[clap(long, default_value = "", conflicts_with = "password")]
+    access_token: String,
 
     /// Waiting time (in secs) to make request to the imap server
     #[clap(long, default_value = "3")]
@@ -30,12 +33,17 @@ struct Cli {
 async fn main() {
     let cli = Cli::parse();
 
+    let imap_access = match cli.access_token.is_empty() {
+        true => imap::Access::Password(cli.password),
+        false => imap::Access::OAuth2(cli.access_token),
+    };
+
     Engine::default()
         .input(
             ImapClient::default()
                 .domain(cli.imap_domain)
                 .email(cli.email)
-                .access(imap::Access::Password(cli.password))
+                .access(imap_access)
                 .polling_time(Duration::from_secs(cli.polling_time)),
         )
         .output(DebugStdout)

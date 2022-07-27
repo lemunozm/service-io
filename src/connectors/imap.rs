@@ -18,6 +18,21 @@ pub enum Access<S: Into<String>> {
     OAuth2(S),
 }
 
+struct GmailOAuth2 {
+    user: String,
+    access_token: String,
+}
+
+impl imap::Authenticator for GmailOAuth2 {
+    type Response = String;
+    fn process(&self, _: &[u8]) -> Self::Response {
+        format!(
+            "user={}\x01auth=Bearer {}\x01\x01",
+            self.user, self.access_token
+        )
+    }
+}
+
 /// Input connector that acts as an IMAP client
 /// The service fetchs and removes the email from the server, and transforms it to messages.
 /// The first word of the subjet is interpreted as the service name.
@@ -59,18 +74,25 @@ impl ImapClient {
     fn connect(&self) -> Result<Session<TlsStream<TcpStream>>, Error> {
         match &self.access {
             None => panic!("An access must be provided"),
-            Some(Access::Password(password)) => {
+            Some(access) => {
                 let tls = TlsConnector::builder().build().unwrap();
                 let client = imap::connect(
                     (self.imap_domain.as_str(), 993),
                     self.imap_domain.as_str(),
                     &tls,
                 )?;
-
-                client.login(&self.email, &password).map_err(|e| e.0)
-            }
-            Some(Access::OAuth2(token)) => {
-                todo!()
+                match access {
+                    Access::Password(password) => {
+                        client.login(&self.email, &password).map_err(|e| e.0)
+                    }
+                    Access::OAuth2(token) => {
+                        let gmail_auth = GmailOAuth2 {
+                            user: self.email.clone(),
+                            access_token: token.clone(),
+                        };
+                        client.authenticate("XOAUTH2", &gmail_auth).map_err(|e| e.0)
+                    }
+                }
             }
         }
     }
