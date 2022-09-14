@@ -36,7 +36,7 @@ and
 ## Features
 - **Easy to use**. Running a server with a bunch of services with (really) few lines of code.
 - **Hostingless**. Run custom server code without hosting server using the existing email infrastructure
-  using the IMAP/SMTP connectors.
+  with the IMAP/SMTP connectors.
 - **Scalable**. Create your own inputs/outputs/services implementing a trait with a single method.
   [Check docs](https://docs.rs/service-io/latest/service_io/interface/index.html)
 - **Multiplatform**. Run your local service-server in any computer you have.
@@ -51,8 +51,8 @@ service-io = "0.1"
 ```
 
 ## Example
-Running this example in any of your home computer,
-and sending an email (as an example, to `services@domain.com`)
+By running this example in any of your home computer,
+sending an email (as an example, to `services@domain.com`)
 with `public-ip` in the subject, you will obtain a response email with your home public IP!
 
 In a similar way, sending an email with `process ls -l` in the subject will return
@@ -106,12 +106,12 @@ Follow the next steps to get it:
 1. Create a new proyect.
 1. Add an OAuth 2.0 credential. This step will five you a `client_id` and `client_secret`.
 1. Run the following script to generate a `refresh_token` (this script is the python3 ported of the [gmail-oauth2-tools](https://github.com/google/gmail-oauth2-tools)):
-```sh
-python3 util/oauth2.py --generate_oauth2_token --client_id=<client_id> --client_secret=<client_secret>
-```
+    ```sh
+    python3 util/oauth2.py --generate_oauth2_token --client_id=<client_id> --client_secret=<client_secret>
+    ```
 1. Open the navigator and copy the value it gives you into the console. This should show you the `refresh_token`.
 
-Now, test if it's working with the [examples/email_server.rs](examples/email_server.rs) example. Run:
+Now, test if it's working with the [email_server](examples/email_server.rs) example. Run:
 
 ```sh
 cargo run --example email_server -- \
