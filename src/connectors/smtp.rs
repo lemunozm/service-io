@@ -4,7 +4,7 @@ use crate::message::Message;
 use crate::util::IntoOption;
 
 use lettre::message::{header::ContentType, Attachment, Mailbox, MultiPart, SinglePart};
-use lettre::transport::smtp::authentication::Credentials;
+use lettre::transport::smtp::authentication::{Credentials, Mechanism};
 use lettre::{Address, AsyncSmtpTransport, AsyncTransport, Tokio1Executor};
 
 use async_trait::async_trait;
@@ -17,7 +17,8 @@ use async_trait::async_trait;
 pub struct SmtpClient {
     smtp_domain: String,
     email: String,
-    password: String,
+    secret: String,
+    oauth2: bool,
     sender_name: Option<String>,
 }
 
@@ -32,8 +33,14 @@ impl SmtpClient {
         self
     }
 
-    pub fn password(mut self, value: impl Into<String>) -> Self {
-        self.password = value.into();
+    pub fn secret(mut self, value: impl Into<String>) -> Self {
+        self.secret = value.into();
+        self
+    }
+
+    /// Use the secret as an access token for oauth2.
+    pub fn oauth2(mut self, value: bool) -> Self {
+        self.oauth2 = value;
         self
     }
 
@@ -49,11 +56,15 @@ impl OutputConnector for SmtpClient {
     async fn run(mut self: Box<Self>, mut receiver: Receiver) -> Result<(), ClosedChannel> {
         let address = self.email.parse::<Address>().unwrap();
         let user = address.user().to_string();
-        let credentials = Credentials::new(user, self.password.into());
+        let credentials = Credentials::new(user, self.secret.into());
 
         let from = Mailbox::new(self.sender_name, address);
         let mailer = AsyncSmtpTransport::<Tokio1Executor>::relay(self.smtp_domain.as_ref())
             .unwrap()
+            .authentication(vec![match self.oauth2 {
+                false => Mechanism::Login,
+                true => Mechanism::Xoauth2,
+            }])
             .credentials(credentials)
             .build();
 

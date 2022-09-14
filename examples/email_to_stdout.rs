@@ -1,4 +1,4 @@
-use service_io::connectors::{imap, DebugStdout, ImapClient};
+use service_io::connectors::{DebugStdout, ImapClient};
 use service_io::engine::Engine;
 use service_io::message::util;
 use service_io::services::{Alarm, Echo, Process, PublicIp};
@@ -18,11 +18,14 @@ struct Cli {
     #[clap(long)]
     email: String,
 
-    #[clap(long, default_value = "", conflicts_with = "access-token")]
-    password: String,
+    #[clap(long)]
+    secret: String,
+
+    #[clap(long)]
+    oauth2: bool,
 
     #[clap(long, default_value = "", conflicts_with = "password")]
-    access_token: String,
+    output: String,
 
     /// Waiting time (in secs) to make request to the imap server
     #[clap(long, default_value = "3")]
@@ -33,17 +36,13 @@ struct Cli {
 async fn main() {
     let cli = Cli::parse();
 
-    let imap_access = match cli.access_token.is_empty() {
-        true => imap::Access::Password(cli.password),
-        false => imap::Access::OAuth2(cli.access_token),
-    };
-
     Engine::default()
         .input(
             ImapClient::default()
                 .domain(cli.imap_domain)
                 .email(cli.email)
-                .access(imap_access)
+                .secret(cli.secret)
+                .oauth2(cli.oauth2)
                 .polling_time(Duration::from_secs(cli.polling_time)),
         )
         .output(DebugStdout)

@@ -12,12 +12,6 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
-#[derive(Clone)]
-pub enum Access<S: Into<String>> {
-    Password(S),
-    OAuth2(S),
-}
-
 struct GmailOAuth2 {
     user: String,
     access_token: String,
@@ -43,7 +37,8 @@ impl imap::Authenticator for GmailOAuth2 {
 pub struct ImapClient {
     imap_domain: String,
     email: String,
-    access: Option<Access<String>>,
+    secret: String,
+    oauth2: bool,
     polling_time: Duration,
 }
 
@@ -58,11 +53,14 @@ impl ImapClient {
         self
     }
 
-    pub fn access(mut self, value: Access<impl Into<String>>) -> Self {
-        self.access = Some(match value {
-            Access::Password(s) => Access::Password(s.into()),
-            Access::OAuth2(s) => Access::OAuth2(s.into()),
-        });
+    pub fn secret(mut self, value: impl Into<String>) -> Self {
+        self.secret = value.into();
+        self
+    }
+
+    /// Use the secret as an access token for oauth2.
+    pub fn oauth2(mut self, value: bool) -> Self {
+        self.oauth2 = value;
         self
     }
 
@@ -72,27 +70,20 @@ impl ImapClient {
     }
 
     fn connect(&self) -> Result<Session<TlsStream<TcpStream>>, Error> {
-        match &self.access {
-            None => panic!("An access must be provided"),
-            Some(access) => {
-                let tls = TlsConnector::builder().build().unwrap();
-                let client = imap::connect(
-                    (self.imap_domain.as_str(), 993),
-                    self.imap_domain.as_str(),
-                    &tls,
-                )?;
-                match access {
-                    Access::Password(password) => {
-                        client.login(&self.email, &password).map_err(|e| e.0)
-                    }
-                    Access::OAuth2(token) => {
-                        let gmail_auth = GmailOAuth2 {
-                            user: self.email.clone(),
-                            access_token: token.clone(),
-                        };
-                        client.authenticate("XOAUTH2", &gmail_auth).map_err(|e| e.0)
-                    }
-                }
+        let tls = TlsConnector::builder().build().unwrap();
+        let client = imap::connect(
+            (self.imap_domain.as_str(), 993),
+            self.imap_domain.as_str(),
+            &tls,
+        )?;
+        match self.oauth2 {
+            false => client.login(&self.email, &self.secret).map_err(|e| e.0),
+            true => {
+                let gmail_auth = GmailOAuth2 {
+                    user: self.email.clone(),
+                    access_token: self.secret.clone(),
+                };
+                client.authenticate("XOAUTH2", &gmail_auth).map_err(|e| e.0)
             }
         }
     }

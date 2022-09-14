@@ -17,7 +17,10 @@ struct Cli {
     email: String,
 
     #[clap(long)]
-    password: String,
+    secret: String,
+
+    #[clap(long)]
+    oauth2: bool,
 
     /// Alias name for 'From' address
     #[clap(long)]
@@ -34,7 +37,8 @@ async fn main() {
             SmtpClient::default()
                 .domain(cli.smtp_domain)
                 .email(cli.email)
-                .password(cli.password)
+                .secret(cli.secret)
+                .oauth2(cli.oauth2)
                 .sender_name(cli.sender_name),
         )
         .add_service("s-echo", Echo)

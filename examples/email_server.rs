@@ -1,4 +1,4 @@
-use service_io::connectors::{imap, ImapClient, SmtpClient};
+use service_io::connectors::{ImapClient, SmtpClient};
 use service_io::engine::Engine;
 use service_io::message::util;
 use service_io::services::{Alarm, Echo, Process, PublicIp};
@@ -22,10 +22,17 @@ struct Cli {
     #[clap(long)]
     email: String,
 
+    /// Secret using along with the email to access the email service.
+    /// if oauth2 is disabled, it is interpreted as the password in a normal login.
     #[clap(long)]
-    password: String,
+    secret: String,
 
-    /// Waiting time (in secs) to make request to the imap server
+    /// Use oauth2 to perform the email access.
+    /// The secret now is interpreted as the access token used in oauth2.
+    #[clap(long)]
+    oauth2: bool,
+
+    /// Waiting time (in secs) to make requests to the imap server
     #[clap(long, default_value = "3")]
     polling_time: u64,
 
@@ -48,14 +55,16 @@ async fn main() {
             ImapClient::default()
                 .domain(cli.imap_domain)
                 .email(&cli.email)
-                .access(imap::Access::Password(&cli.password))
+                .secret(&cli.secret)
+                .oauth2(cli.oauth2)
                 .polling_time(Duration::from_secs(cli.polling_time)),
         )
         .output(
             SmtpClient::default()
                 .domain(cli.smtp_domain)
                 .email(cli.email)
-                .password(cli.password)
+                .secret(cli.secret)
+                .oauth2(cli.oauth2)
                 .sender_name(cli.sender_name),
         )
         .map_input(util::service_name_first_char_to_lowercase)
