@@ -14,7 +14,7 @@
 3. Choose your services.
 4. Run it!
 
-One of the main use-cases is to offer services [without a hosting server](#no-hosting-server).
+One of the main use-cases is to offer services [without hosting a server](#no-hosting-server).
 
 ## How it works?
 <p align="center">
@@ -97,21 +97,40 @@ to the remitter of the request email.
 Check the [Engine](https://docs.rs/service-io/latest/service_io/engine/struct.Engine.html) type
 for additional methods as input mapping/filters or adding whitelists to your services.
 
-Test it yourself with [examples/email_server.rs](examples/email_server.rs).
-Run the following to see all config options.
+## Test it with a Google account!
+Gmail only allow to use **OAuth2** as access mechanism.
+You can no longer use a password from an application to log in.
+For that reason, in order to use the IMAP and SMTP connectors we need 3 values related to OAuth2: `client_id`, `client_secret` and `refresh_token`.
+Follow the next steps to get it:
+1. Open your the [google console](https://console.cloud.google.com) associated to the gmail account you want to use.
+1. Create a new proyect.
+1. Add an OAuth 2.0 credential. This step will five you a `client_id` and `client_secret`.
+1. Run the following script to generate a `refresh_token` (this script is the python3 ported of the [gmail-oauth2-tools](https://github.com/google/gmail-oauth2-tools)):
 ```sh
-cargo run --example email_server -- --help
+python3 util/oauth2.py --generate_oauth2_token --client_id=<client_id> --client_secret=<client_secret>
+```
+1. Open the navigator and copy the value it gives you into the console. This should show you the `refresh_token`.
+
+Now, test if it's working with the [examples/email_server.rs](examples/email_server.rs) example. Run:
+
+```sh
+cargo run --example email_server -- \
+    --imap-domain imap.gmail.com \
+    --smtp-domain smtp.gmail.com \
+    --email <user>@gmail.com \
+    --oauth2-path-url https://accounts.google.com/o/oauth2/v2/auth \
+    --oauth2-token-url https://www.googleapis.com/oauth2/v3/token \
+    --oauth2-client-id <client_id> \
+    --oauth2-client-secret <client_secret>\
+    --oauth2-refresh-token <refresh_token>\
+    -vv
 ```
 
-## Configuring a gmail account to use with `service-io`.
-For use `service-io` with IMAP and SMTP connectors with gmail you need to configure some points
-of your gmail account:
-- Enable IMAP in account settings: Check this [Step 1](https://support.google.com/mail/answer/7126229?hl=en#zippy=%2Cpaso-comprueba-que-imap-est%C3%A9-activado%2Cstep-check-that-imap-is-turned-on).
-- Enable [unsecure app access](https://support.google.com/accounts/answer/6010255?hl=en)
-  to allow login with password from an app.
-  (Pending work to make it available through *oauth2* and avoid this point).
+If you send an email with subject `s-echo` to your `<user>@gmail.com`, in few seconds you should receive the same email.
 
-## No hosting server use-case <span id="no-hosting-server"/>
+**Congratulation!** You have your own hostingless server.
+
+## Hostingless server use-case <span id="no-hosting-server"/>
 If you want to offer some custom service that uses *custom server code*
 you are forced to pay and maintain a hosting server,
 even if the service you are offering is eventual or does not use many resources.
@@ -131,20 +150,6 @@ There is **no hosting maintenance** and **no front-end app development**.
 <p align="center">
   <img src="images/no-hosting-server.png" title="schema">
 </p>
-
-## Configuring a gmail account with Oauth2 to use with `service-io`.
-```sh
-cargo run --example email_server -- \
-    --imap-domain imap.gmail.com \
-    --smtp-domain smtp.gmail.com \
-    --email <USER>@gmail.com \
-    --oauth2-path-url https://accounts.google.com/o/oauth2/v2/auth \
-    --oauth2-token-url https://www.googleapis.com/oauth2/v3/token \
-    --oauth2-client-id <CLIENT_ID> \
-    --oauth2-client-secret <CLIENT_SECRET>\
-    --oauth2-refresh-token <REFRESH_TOKEN>\
-    -vv
-```
 
 ## Contribute
 - *Have you implemented a **service** or **connector**?*
