@@ -1,5 +1,6 @@
 use service_io::connectors::{SmtpClient, UserStdin};
 use service_io::engine::Engine;
+use service_io::secret_manager::PasswordManager;
 use service_io::services::{Alarm, Echo, Process, PublicIp};
 
 use clap::Parser;
@@ -17,10 +18,7 @@ struct Cli {
     email: String,
 
     #[clap(long)]
-    secret: String,
-
-    #[clap(long)]
-    oauth2: bool,
+    password: String,
 
     /// Alias name for 'From' address
     #[clap(long)]
@@ -37,8 +35,7 @@ async fn main() {
             SmtpClient::default()
                 .domain(cli.smtp_domain)
                 .email(cli.email)
-                .secret(cli.secret)
-                .oauth2(cli.oauth2)
+                .secret_manager(PasswordManager::new(cli.password))
                 .sender_name(cli.sender_name),
         )
         .add_service("s-echo", Echo)

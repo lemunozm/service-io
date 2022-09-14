@@ -1,6 +1,7 @@
 use service_io::connectors::{ImapClient, SmtpClient};
 use service_io::engine::Engine;
 use service_io::message::util;
+use service_io::secret_manager::{Oauth2Manager, PasswordManager, SecretHandler};
 use service_io::services::{Alarm, Echo, Process, PublicIp};
 
 use clap::Parser;
@@ -22,21 +23,29 @@ struct Cli {
     #[clap(long)]
     email: String,
 
-    /// Secret using along with the email to access the email service.
-    /// if oauth2 is disabled, it is interpreted as the password in a normal login.
-    #[clap(long)]
-    secret: String,
+    #[clap(long, default_value = "")]
+    password: String,
 
-    /// Use oauth2 to perform the email access.
-    /// The secret now is interpreted as the access token used in oauth2.
-    #[clap(long)]
-    oauth2: bool,
+    #[clap(long, default_value = "")]
+    oauth2_path_url: String,
+
+    #[clap(long, default_value = "")]
+    oauth2_token_url: String,
+
+    #[clap(long, default_value = "")]
+    oauth2_client_id: String,
+
+    #[clap(long, default_value = "")]
+    oauth2_client_secret: String,
+
+    #[clap(long, default_value = "")]
+    oauth2_refresh_token: String,
 
     /// Waiting time (in secs) to make requests to the imap server
     #[clap(long, default_value = "3")]
     polling_time: u64,
 
-    /// Alias name for 'From' address
+    /// Alias name for 'From' address when send an email.
     #[clap(long)]
     sender_name: Option<String>,
 
@@ -50,21 +59,33 @@ async fn main() {
 
     configure_logger(cli.verbose.log_level_filter()).unwrap();
 
+    let secret_handler = match cli.password.is_empty() {
+        false => SecretHandler::new(PasswordManager::new(cli.password)),
+        true => SecretHandler::new(
+            Oauth2Manager::new(
+                cli.oauth2_path_url,
+                cli.oauth2_token_url,
+                cli.oauth2_client_id,
+                cli.oauth2_client_secret,
+                cli.oauth2_refresh_token,
+            )
+            .await,
+        ),
+    };
+
     Engine::default()
         .input(
             ImapClient::default()
                 .domain(cli.imap_domain)
                 .email(&cli.email)
-                .secret(&cli.secret)
-                .oauth2(cli.oauth2)
+                .secret_manager(secret_handler.clone())
                 .polling_time(Duration::from_secs(cli.polling_time)),
         )
         .output(
             SmtpClient::default()
                 .domain(cli.smtp_domain)
                 .email(cli.email)
-                .secret(cli.secret)
-                .oauth2(cli.oauth2)
+                .secret_manager(secret_handler)
                 .sender_name(cli.sender_name),
         )
         .map_input(util::service_name_first_char_to_lowercase)

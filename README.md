@@ -61,7 +61,8 @@ an email with the files of the folder used to run the example.
 ```rust,no_run
 use service_io::engine::Engine;
 use service_io::connectors::{ImapClient, SmtpClient, imap};
-use service_io::services::{PublicIp, Process};
+use service_io::services::{PublicIp, Process, Echo, Alarm};
+use service_io::secret_manager::PasswordManager;
 
 #[tokio::main]
 async fn main() {
@@ -70,14 +71,16 @@ async fn main() {
             ImapClient::default()
                 .domain("imap.domain.com")
                 .email("services@domain.com")
-                .access(imap::Access::Password("1234")),
+                .secret_manager(PasswordManager::new("1234")),
         )
         .output(
             SmtpClient::default()
                 .domain("smtp.domain.com")
                 .email("services@domain.com")
-                .password("1234")
+                .secret_manager(PasswordManager::new("1234")),
         )
+        .add_service("echo", Echo)
+        .add_service("alarm", Alarm)
         .add_service("public-ip", PublicIp)
         .add_service("process", Process)
         // Add any other service you want
@@ -128,6 +131,20 @@ There is **no hosting maintenance** and **no front-end app development**.
 <p align="center">
   <img src="images/no-hosting-server.png" title="schema">
 </p>
+
+## Configuring a gmail account with Oauth2 to use with `service-io`.
+```sh
+cargo run --example email_server -- \
+    --imap-domain imap.gmail.com \
+    --smtp-domain smtp.gmail.com \
+    --email <USER>@gmail.com \
+    --oauth2-path-url https://accounts.google.com/o/oauth2/v2/auth \
+    --oauth2-token-url https://www.googleapis.com/oauth2/v3/token \
+    --oauth2-client-id <CLIENT_ID> \
+    --oauth2-client-secret <CLIENT_SECRET>\
+    --oauth2-refresh-token <REFRESH_TOKEN>\
+    -vv
+```
 
 ## Contribute
 - *Have you implemented a **service** or **connector**?*

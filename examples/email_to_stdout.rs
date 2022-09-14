@@ -1,6 +1,7 @@
 use service_io::connectors::{DebugStdout, ImapClient};
 use service_io::engine::Engine;
 use service_io::message::util;
+use service_io::secret_manager::PasswordManager;
 use service_io::services::{Alarm, Echo, Process, PublicIp};
 
 use clap::Parser;
@@ -19,13 +20,7 @@ struct Cli {
     email: String,
 
     #[clap(long)]
-    secret: String,
-
-    #[clap(long)]
-    oauth2: bool,
-
-    #[clap(long, default_value = "", conflicts_with = "password")]
-    output: String,
+    password: String,
 
     /// Waiting time (in secs) to make request to the imap server
     #[clap(long, default_value = "3")]
@@ -41,8 +36,7 @@ async fn main() {
             ImapClient::default()
                 .domain(cli.imap_domain)
                 .email(cli.email)
-                .secret(cli.secret)
-                .oauth2(cli.oauth2)
+                .secret_manager(PasswordManager::new(cli.password))
                 .polling_time(Duration::from_secs(cli.polling_time)),
         )
         .output(DebugStdout)

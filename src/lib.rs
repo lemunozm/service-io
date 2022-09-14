@@ -14,4 +14,5 @@ pub mod engine;
 pub mod connectors;
 pub mod services;
 
+pub mod secret_manager;
 pub mod util;
