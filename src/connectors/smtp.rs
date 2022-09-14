@@ -65,28 +65,37 @@ impl<A: SecretManager + Sync + Send> OutputConnector for SmtpClient<A> {
         let from = Mailbox::new(self.sender_name, address);
 
         loop {
-            let credentials = Credentials::new(user.clone(), secret_manager.secret().await);
-            let mailer = AsyncSmtpTransport::<Tokio1Executor>::relay(self.smtp_domain.as_ref())
-                .unwrap()
-                .authentication(vec![match secret_manager.secret_type() {
-                    SecretType::Password => Mechanism::Login,
-                    SecretType::AccessToken => Mechanism::Xoauth2,
-                }])
-                .credentials(credentials)
-                .build();
-
             let message = receiver.recv().await?;
             if let Some(email) = message_to_email(message, from.clone()) {
-                match mailer.send(email).await {
-                    Ok(_) => (),
-                    Err(err)
-                        if format!("{}", err).contains("challange")
-                            && secret_manager.secret_type() == SecretType::AccessToken =>
-                    {
-                        // expired access token
-                        secret_manager.refresh().await;
+                loop {
+                    let mailer =
+                        AsyncSmtpTransport::<Tokio1Executor>::relay(self.smtp_domain.as_ref())
+                            .unwrap()
+                            .authentication(vec![match secret_manager.secret_type() {
+                                SecretType::Password => Mechanism::Login,
+                                SecretType::AccessToken => Mechanism::Xoauth2,
+                            }])
+                            .credentials(Credentials::new(
+                                user.clone(),
+                                secret_manager.secret().await,
+                            ))
+                            .build();
+
+                    match mailer.send(email.clone()).await {
+                        Ok(_) => break,
+                        Err(err)
+                            if format!("{}", err).contains("challenge")
+                                && secret_manager.secret_type() == SecretType::AccessToken =>
+                        {
+                            log::trace!("expired access token, refreshing...");
+                            secret_manager.refresh().await;
+                            continue;
+                        }
+                        Err(err) => {
+                            log::error!("Sending error: {}", err);
+                            break;
+                        }
                     }
-                    Err(err) => log::error!("Sending error: {}", err),
                 }
             }
         }

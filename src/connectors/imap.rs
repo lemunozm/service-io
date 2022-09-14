@@ -120,7 +120,7 @@ impl<A: SecretManager + Sync + Send + 'static> InputConnector for ImapClient<A> 
                                 && self.secret_manager.as_mut().unwrap().secret_type()
                                     == SecretType::AccessToken =>
                         {
-                            // expired access token
+                            log::trace!("expired access token, refreshing...");
                             self.secret_manager.as_mut().unwrap().refresh().await;
                             continue;
                         }
