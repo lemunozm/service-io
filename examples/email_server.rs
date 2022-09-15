@@ -104,9 +104,10 @@ fn configure_logger(level_filter: log::LevelFilter) -> Result<(), log::SetLogger
         .filter(move |metadata| metadata.target().starts_with(&crate_filter))
         .format(move |out, message, record| {
             out.finish(format_args!(
-                "[{}] [{}] {}",
+                "[{}] [{}] {}: {}",
                 chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
                 record.level(),
+                record.target(),
                 message
             ))
         })
