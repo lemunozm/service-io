@@ -1,6 +1,7 @@
 use service_io::connectors::{DebugStdout, ImapClient};
 use service_io::engine::Engine;
 use service_io::message::util;
+use service_io::secret_manager::PasswordManager;
 use service_io::services::{Alarm, Echo, Process, PublicIp};
 
 use clap::Parser;
@@ -35,7 +36,7 @@ async fn main() {
             ImapClient::default()
                 .domain(cli.imap_domain)
                 .email(cli.email)
-                .password(cli.password)
+                .secret_manager(PasswordManager::new(cli.password))
                 .polling_time(Duration::from_secs(cli.polling_time)),
         )
         .output(DebugStdout)

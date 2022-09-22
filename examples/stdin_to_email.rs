@@ -1,5 +1,6 @@
 use service_io::connectors::{SmtpClient, UserStdin};
 use service_io::engine::Engine;
+use service_io::secret_manager::PasswordManager;
 use service_io::services::{Alarm, Echo, Process, PublicIp};
 
 use clap::Parser;
@@ -34,7 +35,7 @@ async fn main() {
             SmtpClient::default()
                 .domain(cli.smtp_domain)
                 .email(cli.email)
-                .password(cli.password)
+                .secret_manager(PasswordManager::new(cli.password))
                 .sender_name(cli.sender_name),
         )
         .add_service("s-echo", Echo)
