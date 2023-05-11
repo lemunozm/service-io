@@ -1,7 +1,6 @@
 use crate::channel::{ClosedChannel, Sender};
 use crate::interface::InputConnector;
 use crate::message::Message;
-use crate::secret_manager::{SecretManager, SecretType};
 
 use async_trait::async_trait;
 use imap::{error::Error, Session};
@@ -13,47 +12,21 @@ use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
-struct GmailOAuth2 {
-    user: String,
-    access_token: String,
-}
-
-impl imap::Authenticator for GmailOAuth2 {
-    type Response = String;
-    fn process(&self, _: &[u8]) -> Self::Response {
-        format!(
-            "user={}\x01auth=Bearer {}\x01\x01",
-            self.user, self.access_token
-        )
-    }
-}
-
 /// Input connector that acts as an IMAP client
 /// The service fetchs and removes the email from the server, and transforms it to messages.
 /// The first word of the subjet is interpreted as the service name.
 /// The following spaced-separated words are the arguments.
 ///
 /// This connector makes attempts to the ICMP server each [`ImapClient::polling_time`] seconds.
-#[derive(Clone)]
-pub struct ImapClient<A> {
+#[derive(Default, Clone)]
+pub struct ImapClient {
     imap_domain: String,
     email: String,
-    secret_manager: Option<A>,
+    password: String,
     polling_time: Duration,
 }
 
-impl<A> Default for ImapClient<A> {
-    fn default() -> Self {
-        Self {
-            imap_domain: String::default(),
-            email: String::default(),
-            secret_manager: None,
-            polling_time: Duration::ZERO,
-        }
-    }
-}
-
-impl<A: SecretManager> ImapClient<A> {
+impl ImapClient {
     pub fn domain(mut self, value: impl Into<String>) -> Self {
         self.imap_domain = value.into();
         self
@@ -64,8 +37,8 @@ impl<A: SecretManager> ImapClient<A> {
         self
     }
 
-    pub fn secret_manager(mut self, secret_manager: A) -> Self {
-        self.secret_manager = Some(secret_manager);
+    pub fn password(mut self, value: impl Into<String>) -> Self {
+        self.password = value.into();
         self
     }
 
@@ -74,7 +47,7 @@ impl<A: SecretManager> ImapClient<A> {
         self
     }
 
-    async fn connect(&self) -> Result<Session<TlsStream<TcpStream>>, Error> {
+    fn connect(&self) -> Result<Session<TlsStream<TcpStream>>, Error> {
         let tls = TlsConnector::builder().build().unwrap();
         let client = imap::connect(
             (self.imap_domain.as_str(), 993),
@@ -82,56 +55,39 @@ impl<A: SecretManager> ImapClient<A> {
             &tls,
         )?;
 
-        let secret_manager = self.secret_manager.as_ref().unwrap();
-        match secret_manager.secret_type() {
-            SecretType::Password => client
-                .login(&self.email, secret_manager.secret().await)
-                .map_err(|e| e.0),
-            SecretType::AccessToken => {
-                let gmail_auth = GmailOAuth2 {
-                    user: self.email.clone(),
-                    access_token: secret_manager.secret().await,
-                };
-                client.authenticate("XOAUTH2", &gmail_auth).map_err(|e| e.0)
-            }
-        }
+        client.login(&self.email, &self.password).map_err(|e| e.0)
     }
 }
 
 #[async_trait]
-impl<A: SecretManager + Sync + Send + 'static> InputConnector for ImapClient<A> {
+impl InputConnector for ImapClient {
     async fn run(mut self: Box<Self>, sender: Sender) -> Result<(), ClosedChannel> {
-        let mut session = self.connect().await.unwrap();
-        loop {
-            std::thread::sleep(self.polling_time);
+        tokio::task::spawn_blocking(move || {
+            let mut session = self.connect().unwrap();
+            loop {
+                std::thread::sleep(self.polling_time);
 
-            match read_inbox(&mut session) {
-                Ok(Some(message)) => sender.send(message).await?,
-                Ok(None) => (),
-                Err(err) => {
-                    log::warn!("{}", err);
-                    session = match self.connect().await {
-                        Ok(session) => {
-                            log::info!("Connection restored");
-                            session
-                        }
-                        Err(Error::No(msg))
-                            if msg.contains("AUTHENTICATIONFAILED")
-                                && self.secret_manager.as_mut().unwrap().secret_type()
-                                    == SecretType::AccessToken =>
-                        {
-                            log::trace!("expired access token, refreshing...");
-                            self.secret_manager.as_mut().unwrap().refresh().await;
-                            continue;
-                        }
-                        Err(err) => {
-                            log::error!("{}", err);
-                            continue;
+                match read_inbox(&mut session) {
+                    Ok(Some(message)) => sender.blocking_send(message)?,
+                    Ok(None) => (),
+                    Err(err) => {
+                        log::warn!("{}", err);
+                        session = match self.connect() {
+                            Ok(session) => {
+                                log::info!("Connection restored");
+                                session
+                            }
+                            Err(err) => {
+                                log::error!("{}", err);
+                                continue;
+                            }
                         }
                     }
                 }
             }
-        }
+        })
+        .await
+        .unwrap()
     }
 }
 

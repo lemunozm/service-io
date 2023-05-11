@@ -63,10 +63,9 @@ impl ServiceHandle {
 ///
 /// # Example
 /// ```rust no_run
-/// use service_io::connectors::{ImapClient, SmtpClient, imap};
+/// use service_io::connectors::{ImapClient, SmtpClient};
 /// use service_io::engine::Engine;
 /// use service_io::services::{Echo, Alarm};
-/// use service_io::secret_manager::PasswordManager;
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -75,13 +74,13 @@ impl ServiceHandle {
 ///             ImapClient::default()
 ///                 .domain("imap.domain.com")
 ///                 .email("service@domain.com")
-///                 .secret_manager(PasswordManager::new("1234")),
+///                 .password("1234"),
 ///         )
 ///         .output(
 ///             SmtpClient::default()
 ///                 .domain("smtp.domain.com")
 ///                 .email("service@domain.com")
-///                 .secret_manager(PasswordManager::new("1234")),
+///                 .password("1234"),
 ///         )
 ///         .add_service("s-echo", Echo)
 ///         .add_service("s-alarm", Alarm)
@@ -127,11 +126,10 @@ impl Engine {
     ///
     /// # Example
     /// ```rust no_run
-    /// use service_io::connectors::{ImapClient, SmtpClient, imap};
+    /// use service_io::connectors::{ImapClient, SmtpClient};
     /// use service_io::engine::Engine;
     /// use service_io::services::Echo;
     /// use service_io::message::util;
-    /// use service_io::secret_manager::PasswordManager;
     ///
     /// #[tokio::main]
     /// async fn main() {
@@ -140,13 +138,13 @@ impl Engine {
     ///             ImapClient::default()
     ///                 .domain("imap.domain.com")
     ///                 .email("service@domain.com")
-    ///                 .secret_manager(PasswordManager::new("1234")),
+    ///                 .password("1234"),
     ///         )
     ///         .output(
     ///             SmtpClient::default()
     ///                 .domain("smtp.domain.com")
     ///                 .email("service@domain.com")
-    ///                 .secret_manager(PasswordManager::new("1234")),
+    ///                 .password("1234"),
     ///         )
     ///         // Now, if the user writes "S-echo", it will found the service "s-echo"
     ///         .map_input(util::service_name_first_char_to_lowercase)
@@ -165,10 +163,9 @@ impl Engine {
     ///
     /// # Example
     /// ```rust no_run
-    /// use service_io::connectors::{ImapClient, SmtpClient, imap};
+    /// use service_io::connectors::{ImapClient, SmtpClient};
     /// use service_io::engine::Engine;
     /// use service_io::services::Echo;
-    /// use service_io::secret_manager::PasswordManager;
     ///
     /// #[tokio::main]
     /// async fn main() {
@@ -177,13 +174,13 @@ impl Engine {
     ///             ImapClient::default()
     ///                 .domain("imap.domain.com")
     ///                 .email("service@domain.com")
-    ///                 .secret_manager(PasswordManager::new("1234")),
+    ///                 .password("1234"),
     ///         )
     ///         .output(
     ///             SmtpClient::default()
     ///                 .domain("smtp.domain.com")
     ///                 .email("service@domain.com")
-    ///                 .secret_manager(PasswordManager::new("1234")),
+    ///                 .password("1234"),
     ///         )
     ///         // Now, only input messages from gmail are allowed
     ///         .filter_input(|message| message.user.ends_with("gmail.com"))
@@ -224,10 +221,9 @@ impl Engine {
     ///
     /// # Example
     /// ```rust no_run
-    /// use service_io::connectors::{ImapClient, SmtpClient, imap};
+    /// use service_io::connectors::{ImapClient, SmtpClient};
     /// use service_io::engine::Engine;
     /// use service_io::services::Process;
-    /// use service_io::secret_manager::PasswordManager;
     ///
     /// #[tokio::main]
     /// async fn main() {
@@ -236,13 +232,13 @@ impl Engine {
     ///             ImapClient::default()
     ///                 .domain("imap.domain.com")
     ///                 .email("service@domain.com")
-    ///                 .secret_manager(PasswordManager::new("1234")),
+    ///                 .password("1234"),
     ///         )
     ///         .output(
     ///             SmtpClient::default()
     ///                 .domain("smtp.domain.com")
     ///                 .email("service@domain.com")
-    ///                 .secret_manager(PasswordManager::new("1234")),
+    ///                 .password("1234"),
     ///         )
     ///         // We only want messages comming from the admin user
     ///         // to go to s-process service to avoid attacks.

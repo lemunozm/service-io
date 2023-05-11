@@ -14,7 +14,7 @@
 3. Choose your services.
 4. Run it!
 
-One of the main use-cases is to offer services [without hosting a server](#no-hosting-server).
+One of the main use-cases is to offer services [without a hosting server](#no-hosting-server).
 
 ## How it works?
 <p align="center">
@@ -36,7 +36,7 @@ and
 ## Features
 - **Easy to use**. Running a server with a bunch of services with (really) few lines of code.
 - **Hostingless**. Run custom server code without hosting server using the existing email infrastructure
-  with the IMAP/SMTP connectors.
+  using the IMAP/SMTP connectors.
 - **Scalable**. Create your own inputs/outputs/services implementing a trait with a single method.
   [Check docs](https://docs.rs/service-io/latest/service_io/interface/index.html)
 - **Multiplatform**. Run your local service-server in any computer you have.
@@ -51,8 +51,8 @@ service-io = "0.1"
 ```
 
 ## Example
-By running this example in any of your home computer,
-sending an email (as an example, to `services@domain.com`)
+Running this example in any of your home computer,
+and sending an email (as an example, to `services@domain.com`)
 with `public-ip` in the subject, you will obtain a response email with your home public IP!
 
 In a similar way, sending an email with `process ls -l` in the subject will return
@@ -60,9 +60,8 @@ an email with the files of the folder used to run the example.
 
 ```rust,no_run
 use service_io::engine::Engine;
-use service_io::connectors::{ImapClient, SmtpClient, imap};
-use service_io::services::{PublicIp, Process, Echo, Alarm};
-use service_io::secret_manager::PasswordManager;
+use service_io::connectors::{ImapClient, SmtpClient};
+use service_io::services::{PublicIp, Process};
 
 #[tokio::main]
 async fn main() {
@@ -71,16 +70,14 @@ async fn main() {
             ImapClient::default()
                 .domain("imap.domain.com")
                 .email("services@domain.com")
-                .secret_manager(PasswordManager::new("1234")),
+                .password("1234")
         )
         .output(
             SmtpClient::default()
                 .domain("smtp.domain.com")
                 .email("services@domain.com")
-                .secret_manager(PasswordManager::new("1234")),
+                .password("1234")
         )
-        .add_service("echo", Echo)
-        .add_service("alarm", Alarm)
         .add_service("public-ip", PublicIp)
         .add_service("process", Process)
         // Add any other service you want
@@ -97,40 +94,21 @@ to the remitter of the request email.
 Check the [Engine](https://docs.rs/service-io/latest/service_io/engine/struct.Engine.html) type
 for additional methods as input mapping/filters or adding whitelists to your services.
 
-## Test it with a Google account!
-Gmail only allow to use **OAuth2** as access mechanism.
-You can no longer use a password from an application to log in.
-For that reason, in order to use the IMAP and SMTP connectors we need 3 values related to OAuth2: `client_id`, `client_secret` and `refresh_token`.
-Follow the next steps to get it:
-1. Open your the [google console](https://console.cloud.google.com) associated to the gmail account you want to use.
-1. Create a new proyect.
-1. Add an OAuth 2.0 credential. This step will five you a `client_id` and `client_secret`.
-1. Run the following script to generate a `refresh_token` (this script is the python3 ported of the [gmail-oauth2-tools](https://github.com/google/gmail-oauth2-tools)):
-    ```sh
-    python3 util/oauth2.py --generate_oauth2_token --client_id=<client_id> --client_secret=<client_secret>
-    ```
-1. Open the navigator and copy the value it gives you into the console. This should show you the `refresh_token`.
-
-Now, test if it's working with the [email_server](examples/email_server.rs) example. Run:
-
+Test it yourself with [examples/email_server.rs](examples/email_server.rs).
+Run the following to see all config options.
 ```sh
-cargo run --example email_server -- \
-    --imap-domain imap.gmail.com \
-    --smtp-domain smtp.gmail.com \
-    --email <user>@gmail.com \
-    --oauth2-path-url https://accounts.google.com/o/oauth2/v2/auth \
-    --oauth2-token-url https://www.googleapis.com/oauth2/v3/token \
-    --oauth2-client-id <client_id> \
-    --oauth2-client-secret <client_secret>\
-    --oauth2-refresh-token <refresh_token>\
-    -vv
+cargo run --example email_server -- --help
 ```
 
-If you send an email with subject `s-echo` to your `<user>@gmail.com`, in few seconds you should receive the same email.
+## Configuring a gmail account to use with `service-io`.
+For use `service-io` with IMAP and SMTP connectors with gmail you need to configure some points
+of your gmail account:
+- Enable IMAP in account settings: Check this [Step 1](https://support.google.com/mail/answer/7126229?hl=en#zippy=%2Cpaso-comprueba-que-imap-est%C3%A9-activado%2Cstep-check-that-imap-is-turned-on).
+- Enable [unsecure app access](https://support.google.com/accounts/answer/6010255?hl=en)
+  to allow login with password from an app.
+  (Pending work to make it available through *oauth2* and avoid this point).
 
-**Congratulation!** You have your own hostingless server.
-
-## Hostingless server use-case <span id="no-hosting-server"/>
+## No hosting server use-case <span id="no-hosting-server"/>
 If you want to offer some custom service that uses *custom server code*
 you are forced to pay and maintain a hosting server,
 even if the service you are offering is eventual or does not use many resources.
