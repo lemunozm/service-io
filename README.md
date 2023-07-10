@@ -3,6 +3,8 @@
 [![](https://img.shields.io/crates/l/service-io)](https://www.apache.org/licenses/LICENSE-2.0.txt)
 [![](https://img.shields.io/badge/bymeacoffee-donate-yellow)](https://www.buymeacoffee.com/lemunozm)
 
+**NOTE: This crate is archived, use [`mailfred`](https://github.com/lemunozm/mailfred) instead.**
+
 <p align="center">
   <img src="images/title.png" title="service-io">
 </p>
@@ -61,7 +63,7 @@ an email with the files of the folder used to run the example.
 ```rust,no_run
 use service_io::engine::Engine;
 use service_io::connectors::{ImapClient, SmtpClient};
-use service_io::services::{PublicIp, Process};
+use service_io::services::{PublicIp, Process, Echo, Alarm};
 
 #[tokio::main]
 async fn main() {
@@ -78,6 +80,8 @@ async fn main() {
                 .email("services@domain.com")
                 .password("1234")
         )
+        .add_service("echo", Echo)
+        .add_service("alarm", Alarm)
         .add_service("public-ip", PublicIp)
         .add_service("process", Process)
         // Add any other service you want
